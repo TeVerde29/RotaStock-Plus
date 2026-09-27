@@ -199,15 +199,6 @@ npm run build
 
 ---
 
-## Roadmap
-
-- [ ] Empaquetado multiplataforma (macOS / Linux)
-- [ ] Soporte para múltiples almacenes/ubicaciones
-- [ ] Historial de cambios de umbrales
-- [ ] Tests automatizados del motor de replay FIFO
-
----
-
 ## Licencia
 
 Este proyecto se distribuye bajo la licencia **MIT**. Consulta el archivo [`LICENSE`](./LICENSE) para más detalles.
