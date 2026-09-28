@@ -303,6 +303,7 @@ button:focus-visible,.nav-item:focus-visible{outline:2px solid var(--primary);ou
 .modal-body{padding:20px}
 .form-grid{display:flex;flex-direction:column;gap:14px}
 .form-grid label{display:flex;flex-direction:column;gap:6px;font-size:.84rem;color:var(--muted);font-weight:500}
+.form-grid label .lt{display:block}
 .form-grid label .req{color:var(--dormido)}
 .form-grid input,.form-grid select{width:100%}
 .form-hint{font-size:.78rem;color:var(--lenta);margin-top:-4px}
@@ -351,3 +352,56 @@ body.sidebar-closed .sidebar{width:0;padding:0;overflow:hidden;border:none}
   background:var(--border);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
 .content::-webkit-scrollbar-thumb:hover,.table-wrap::-webkit-scrollbar-thumb:hover{
   background:var(--muted-2);background-clip:padding-box;border:2px solid transparent}
+
+/* ======================================================================
+   RotaStock Plus — extensiones para los 9 módulos (misma paleta/tipo)
+   ====================================================================== */
+.nav-item .n{font-size:.68rem;color:var(--muted-2);font-variant-numeric:tabular-nums;min-width:18px}
+.nav-item.active .n{color:var(--primary)}
+.side-emp{padding:10px 8px 2px;font-size:.72rem;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.07em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-stats{padding:0 8px;font-size:.72rem;color:var(--muted-2);font-variant-numeric:tabular-nums}
+.kpi-grid.cols3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpi-sub{font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.alert-banner.ok{background:var(--sana-bg);border-left-color:var(--sana)}
+.alert-banner.ok .ab-ico{color:var(--sana)}
+.badge.info{background:var(--primary-soft);color:var(--primary)}
+.badge.warn{background:var(--lenta-bg);color:var(--lenta)}
+.badge.bad{background:var(--dormido-bg);color:var(--dormido)}
+.badge.abc{background:var(--sana-bg);color:var(--sana)}
+.badge.ghost{background:var(--surface-2);color:var(--muted)}
+.pill.sin{background:var(--surface-2);color:var(--muted)}
+.kv{display:flex;justify-content:space-between;gap:8px;padding:2px 0;font-size:.84rem;color:var(--muted)}
+.kv b{color:var(--text);font-variant-numeric:tabular-nums;font-weight:600}
+.legend-list{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.legend-list .lrow{display:flex;justify-content:space-between;align-items:center;background:var(--field);
+  border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:7px 10px;font-size:.82rem}
+.legend-list .lrow b{font-variant-numeric:tabular-nums}
+.foot-note{color:var(--muted-2);font-size:.76rem;text-align:center;padding:18px 0 4px;font-variant-numeric:tabular-nums}
+.imp-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#view-respaldos .imp-row{margin-top:14px}
+.imp-row .btn{flex-shrink:0}
+.bk-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.bk-list .kv{border-bottom:1px solid var(--border-soft);padding:8px 0}
+.mono{font-variant-numeric:tabular-nums}
+:root[data-theme="dark"] .input{color-scheme:dark}
+select.input{cursor:pointer}
+textarea.input{resize:vertical;min-height:64px}
+@media(max-width:1200px){.kpi-grid.cols3{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.kpi-grid.cols3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.kpi-grid.cols3{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- Clasificación ABC: tarjetas por categoría ---------- */
+.abc-cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.abc-cat{border:1px solid;border-radius:var(--radius);padding:14px 16px;font-size:.86rem;line-height:1.9}
+.abc-cat.A{background:var(--dormido-bg);border-color:var(--dormido)}
+.abc-cat.B{background:var(--lenta-bg);border-color:var(--lenta)}
+.abc-cat.C{background:var(--sana-bg);border-color:var(--sana)}
+.abc-cat-t{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.abc-cat.A .abc-cat-t{color:var(--dormido)}
+.abc-cat.B .abc-cat-t{color:var(--lenta)}
+.abc-cat.C .abc-cat-t{color:var(--sana)}
+.abc-cat .muted{font-size:.82rem}
+.abc-chips{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.8rem;color:var(--muted)}
+.abc-chips .dot{margin-right:4px}
+@media(max-width:900px){.abc-cats{grid-template-columns:minmax(0,1fr)}}

@@ -1,45 +1,55 @@
 {
-  "name": "rotastock",
-  "version": "1.0.0",
-  "description": "RotaStock - Control de Rotación de Inventario (offline, portable, FIFO estricto)",
+  "name": "rotastock-plus",
+  "version": "2.0.0",
+  "description": "RotaStock Plus — Control de rotación FIFO (PEPS), 9 módulos, 100% offline, estado único JSON",
+  "author": "Pedro Giovanni Ricra Figueroa",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win portable"
+    "build": "electron-builder --win"
   },
-  "author": "RotaStock",
-  "license": "MIT",
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
   "build": {
-    "appId": "com.rotastock.app",
-    "productName": "RotaStock",
-    "copyright": "Copyright © 2024 RotaStock",
+    "appId": "pe.edu.unu.rotastockplus",
+    "productName": "RotaStockPlus",
     "directories": {
       "output": "dist"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RotaStockPlus",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "files": [
       "main.js",
       "preload.js",
-      "frontend/**/*"
+      "package.json",
+      "frontend/**/*",
+      "!frontend/vendor/.gitkeep"
     ],
-    "extraFiles": [
-      {
-        "from": "datos",
-        "to": "datos",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "backups",
-        "to": "backups",
-        "filter": ["**/*"]
-      }
-    ],
-    "win": {
-      "target": [{ "target": "portable" }],
-      "artifactName": "RotaStock.exe"
+    "extraMetadata": {},
+    "portable": {
+      "artifactName": "RotaStockPlus.exe"
     }
-  },
-  "devDependencies": {
-    "electron": "^30.0.0",
-    "electron-builder": "^24.9.1"
   }
 }

@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
-  <title>RotaStock — Control de Rotación de Inventario</title>
-  <!-- Aplica el tema guardado antes de pintar (evita el parpadeo) -->
+  <title>RotaStock Plus — Control de Inventario</title>
   <script>
     (function () {
       var t = 'dark';
@@ -14,10 +13,10 @@
     })();
   </script>
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/png" href="assets/icon.png" />
 </head>
 <body>
 
-  <!-- Biblioteca de iconos (SVG de línea) -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
     <defs>
       <symbol id="i-logo" viewBox="0 0 24 24"><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><rect x="8" y="3" width="8" height="8" rx="1"/></symbol>
@@ -30,6 +29,7 @@
       <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4L3 8l4 4M3 8h15M17 20l4-4-4-4M21 16H6"/></symbol>
       <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M4 20h16"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 20V9M7 13l5-5 5 5M4 4h16"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
       <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol>
@@ -39,6 +39,9 @@
       <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="7.5" cy="8.5" r="1"/></symbol>
       <symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 12h.01M17.5 12h.01"/></symbol>
       <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+      <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0M9 13l2 2 4-4"/></symbol>
+      <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/></symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
     </defs>
   </svg>
 
@@ -49,23 +52,11 @@
       </button>
       <div class="brand">
         <span class="brand-mark"><svg class="i"><use href="#i-logo"/></svg></span>
-        <span class="brand-name">Rota<strong>Stock</strong></span>
+        <span class="brand-name">Rota<strong>Stock</strong> Plus</span>
       </div>
     </div>
     <div class="nav-right">
-      <label class="period-selector">
-        <span class="period-label">Período</span>
-        <select id="periodSelect">
-          <option value="7">1 semana</option>
-          <option value="15">15 días</option>
-          <option value="30" selected>1 mes</option>
-          <option value="90">3 meses</option>
-          <option value="180">6 meses</option>
-          <option value="365">1 año</option>
-          <option value="all">Siempre</option>
-        </select>
-      </label>
-      <button id="btnTheme" class="theme-toggle" title="Cambiar a modo claro" aria-label="Cambiar entre modo claro y oscuro">
+      <button id="btnTheme" class="theme-toggle" title="Cambiar modo claro/oscuro" aria-label="Cambiar entre modo claro y oscuro">
         <svg class="i i-sun"><use href="#i-sun"/></svg>
         <svg class="i i-moon"><use href="#i-moon"/></svg>
       </button>
@@ -78,20 +69,26 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <nav>
-        <button class="nav-item active" data-view="rotacion"><svg class="i"><use href="#i-rotation"/></svg> Rotación</button>
-        <button class="nav-item" data-view="productos"><svg class="i"><use href="#i-box"/></svg> Productos</button>
-        <button class="nav-item" data-view="movimientos"><svg class="i"><use href="#i-swap"/></svg> Movimientos</button>
-        <button class="nav-item" data-view="configuracion"><svg class="i"><use href="#i-sliders"/></svg> Configuración</button>
-        <button class="nav-item" data-view="exportar"><svg class="i"><use href="#i-download"/></svg> Exportar Datos</button>
+        <button class="nav-item active" data-view="dashboard"><svg class="i"><use href="#i-rotation"/></svg>Panel de control</button>
+        <button class="nav-item" data-view="productos"><svg class="i"><use href="#i-box"/></svg>Productos</button>
+        <button class="nav-item" data-view="abc"><svg class="i"><use href="#i-trend"/></svg>Clasificación ABC</button>
+        <button class="nav-item" data-view="movimientos"><svg class="i"><use href="#i-swap"/></svg>Movimientos</button>
+        <button class="nav-item" data-view="reabastecimiento"><svg class="i"><use href="#i-calendar"/></svg>Qué comprar</button>
+        <button class="nav-item" data-view="auditoria"><svg class="i"><use href="#i-clip"/></svg>Conteos de almacén</button>
+        <button class="nav-item" data-view="configuracion"><svg class="i"><use href="#i-sliders"/></svg>Configuración</button>
+        <button class="nav-item" data-view="respaldos"><svg class="i"><use href="#i-archive"/></svg>Copias de seguridad</button>
+        <button class="nav-item" data-view="reportes"><svg class="i"><use href="#i-doc"/></svg>Informes</button>
       </nav>
       <div class="sidebar-foot">
+        <div class="side-emp" id="sideEmp">—</div>
         <div class="method-badge">Método de costeo<strong>FIFO (PEPS)</strong></div>
+        <div class="side-stats" id="sideStats"></div>
       </div>
     </aside>
 
     <main class="content">
 
-      <section class="view" id="view-rotacion">
+      <section class="view" id="view-dashboard">
         <div id="alertBanner" class="alert-banner hidden">
           <span id="alertText"></span>
           <button id="closeAlert" class="icon-btn" title="Cerrar advertencia" aria-label="Cerrar advertencia"><svg class="i"><use href="#i-close"/></svg></button>
@@ -99,27 +96,40 @@
 
         <div class="view-head">
           <div>
-            <h1>Rotación de Inventario</h1>
+            <h1>Panel de control</h1>
             <p class="muted" id="periodCaption">Análisis del período seleccionado</p>
           </div>
+          <label class="period-selector">
+            <span class="period-label">Período</span>
+            <select id="periodSelect">
+              <option value="7">1 semana</option>
+              <option value="15">15 días</option>
+              <option value="30" selected>1 mes</option>
+              <option value="90">3 meses</option>
+              <option value="180">6 meses</option>
+              <option value="365">1 año</option>
+              <option value="all">Siempre</option>
+            </select>
+          </label>
         </div>
 
         <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Días de Inventario</span><svg class="i kpi-ico"><use href="#i-calendar"/></svg></div><span class="kpi-value" id="kpiDias">—</span></div>
-          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">COGS del período</span><svg class="i kpi-ico"><use href="#i-tag"/></svg></div><span class="kpi-value" id="kpiCogs">—</span></div>
-          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Ingresos Totales</span><svg class="i kpi-ico"><use href="#i-cash"/></svg></div><span class="kpi-value" id="kpiIngresos">—</span></div>
-          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Ganancia Bruta</span><svg class="i kpi-ico"><use href="#i-trend"/></svg></div><span class="kpi-value" id="kpiGanancia">—</span></div>
-          <div class="kpi-card k-alert"><div class="kpi-top"><span class="kpi-label">Alertas de Rotación</span><svg class="i kpi-ico"><use href="#i-alert"/></svg></div><span class="kpi-value" id="kpiAlertas">—</span></div>
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Días de inventario</span><svg class="i kpi-ico"><use href="#i-calendar"/></svg></div><span class="kpi-value" id="kpiDias">—</span><span class="kpi-sub" id="kpiDiasSub"></span></div>
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Costo de lo vendido</span><svg class="i kpi-ico"><use href="#i-tag"/></svg></div><span class="kpi-value" id="kpiCogs">—</span><span class="kpi-sub" id="kpiCogsSub"></span></div>
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Ingresos totales</span><svg class="i kpi-ico"><use href="#i-cash"/></svg></div><span class="kpi-value" id="kpiIngresos">—</span><span class="kpi-sub" id="kpiIngresosSub"></span></div>
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Ganancia bruta</span><svg class="i kpi-ico"><use href="#i-trend"/></svg></div><span class="kpi-value" id="kpiGanancia">—</span><span class="kpi-sub" id="kpiGananciaSub"></span></div>
+          <div class="kpi-card k-alert"><div class="kpi-top"><span class="kpi-label">Alertas de rotación</span><svg class="i kpi-ico"><use href="#i-alert"/></svg></div><span class="kpi-value" id="kpiAlertas">—</span><span class="kpi-sub" id="kpiAlertasSub"></span></div>
         </div>
 
         <div class="chart-row">
           <div class="panel">
-            <div class="panel-head"><h3>Ingresos vs. COGS por producto</h3></div>
+            <div class="panel-head"><div><h3>Ingresos vs. costos por producto</h3><p class="muted">Los 8 productos que más venden en el período</p></div></div>
             <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
           </div>
           <div class="panel">
-            <div class="panel-head"><h3>Distribución de estados</h3></div>
+            <div class="panel-head"><div><h3>Salud del inventario</h3><p class="muted">Productos por estado de movimiento</p></div></div>
             <div class="chart-wrap"><canvas id="chartDonut"></canvas></div>
+            <div class="legend-list" id="donutLegend"></div>
           </div>
         </div>
 
@@ -133,10 +143,10 @@
               <thead>
                 <tr>
                   <th data-sort="nombre">Producto</th>
-                  <th data-sort="invProm" class="num">Inv. Promedio</th>
+                  <th data-sort="invProm" class="num">Inv. promedio</th>
                   <th data-sort="rotacion" class="num">Rotación</th>
-                  <th data-sort="cobertura" class="num">Días Cobertura</th>
-                  <th data-sort="diasSinMov" class="num">Días sin Mov.</th>
+                  <th data-sort="cobertura" class="num">Días cobertura</th>
+                  <th data-sort="diasSinMov" class="num">Días sin mov.</th>
                   <th data-sort="estadoOrden">Estado</th>
                 </tr>
               </thead>
@@ -149,36 +159,74 @@
 
       <section class="view hidden" id="view-productos">
         <div class="view-head">
-          <h1>Productos</h1>
-          <button class="btn btn-primary" id="btnNuevoProducto"><svg class="i"><use href="#i-plus"/></svg> Nuevo Producto</button>
+          <div><h1>Productos</h1><p class="muted">Tu catálogo: registra, edita o elimina productos</p></div>
+          <button class="btn btn-primary" id="btnNuevoProducto"><svg class="i"><use href="#i-plus"/></svg> Nuevo producto</button>
         </div>
         <div class="toolbar">
           <input type="search" id="prodSearch" class="input search" placeholder="Buscar por nombre…" />
           <select id="prodFilterEstado" class="input">
             <option value="">Todos los estados</option>
-            <option value="sana">Rotación Sana</option>
-            <option value="lenta">Rotación Lenta</option>
-            <option value="muyLenta">Rotación Muy Lenta</option>
-            <option value="dormido">Inventario Dormido</option>
+            <option value="sana">Rotación sana</option>
+            <option value="lenta">Rotación lenta</option>
+            <option value="muyLenta">Rotación muy lenta</option>
+            <option value="dormido">Inventario dormido</option>
           </select>
           <select id="prodSortField" class="input">
-            <option value="nombre">Ordenar: Nombre</option>
-            <option value="rotacion">Ordenar: Rotación</option>
-            <option value="cogs">Ordenar: COGS</option>
-            <option value="ingresos">Ordenar: Ingresos</option>
-            <option value="ganancia">Ordenar: Ganancia</option>
-            <option value="cobertura">Ordenar: Días Cobertura</option>
-            <option value="diasSinMov">Ordenar: Días sin Mov.</option>
+            <option value="nombre">Ordenar: nombre</option>
+            <option value="rotacion">Ordenar: rotación</option>
+            <option value="cogs">Ordenar: costo vendido</option>
+            <option value="ingresos">Ordenar: ingresos</option>
+            <option value="ganancia">Ordenar: ganancia</option>
+            <option value="cobertura">Ordenar: días cobertura</option>
+            <option value="diasSinMov">Ordenar: días sin mov.</option>
           </select>
           <button id="prodSortDir" class="btn btn-ghost" data-dir="asc" title="Dirección">▲ Asc</button>
         </div>
         <div class="product-grid" id="productGrid"></div>
       </section>
 
+      <section class="view hidden" id="view-abc">
+        <div class="view-head">
+          <div><h1>Clasificación de productos</h1><p class="muted">Cuáles productos concentran tu dinero y cuáles se venden de forma irregular</p></div>
+        </div>
+        <div class="toolbar">
+          <select id="abcBase" class="input">
+            <option value="valor">Ver por: dinero en stock</option>
+            <option value="demanda">Ver por: costo de lo vendido (COGS)</option>
+          </select>
+          <span class="muted" id="abcInfo"></span>
+        </div>
+        <div class="abc-cats" id="abcCats"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Curva de importancia</h3></div>
+          <div class="chart-wrap"><canvas id="chartPareto"></canvas></div>
+          <div class="abc-chips" id="paretoChips"></div>
+        </div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table class="data-table" id="abcTable">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="num" id="abcBaseHead">Valor en stock</th>
+                  <th class="num">% del total</th>
+                  <th class="num">% acumulado</th>
+                  <th>Grupo</th>
+                  <th class="num">Estabilidad</th>
+                  <th>Estabilidad</th>
+                  <th>Revisar cada</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section class="view hidden" id="view-movimientos">
         <div class="view-head">
-          <h1>Movimientos</h1>
-          <button class="btn btn-primary" id="btnNuevoMovimiento"><svg class="i"><use href="#i-plus"/></svg> Registrar Movimiento</button>
+          <div><h1>Movimientos</h1><p class="muted">Historial completo de compras y ventas <span id="movCount"></span></p></div>
+          <button class="btn btn-primary" id="btnNuevoMovimiento"><svg class="i"><use href="#i-plus"/></svg> Registrar movimiento</button>
         </div>
         <div class="toolbar">
           <input type="search" id="movSearch" class="input search" placeholder="Buscar producto…" />
@@ -186,6 +234,16 @@
             <option value="">Compras y ventas</option>
             <option value="compra">Solo compras</option>
             <option value="venta">Solo ventas</option>
+          </select>
+          <select id="movPeriodo" class="input">
+            <option value="hoy">Hoy</option>
+            <option value="7">Esta semana</option>
+            <option value="15">Últimos 15 días</option>
+            <option value="30">Último mes</option>
+            <option value="90">Últimos 3 meses</option>
+            <option value="180">Último medio año</option>
+            <option value="365">Último año</option>
+            <option value="siempre" selected>Siempre</option>
           </select>
         </div>
         <div class="panel">
@@ -197,7 +255,7 @@
                   <th data-sort="producto">Producto</th>
                   <th data-sort="tipo">Tipo</th>
                   <th data-sort="cantidad" class="num">Cantidad</th>
-                  <th data-sort="costoUnitario" class="num">Costo/Precio Unit.</th>
+                  <th data-sort="costoUnitario" class="num">Costo/Precio unit.</th>
                   <th class="num">Total</th>
                   <th>Acciones</th>
                 </tr>
@@ -209,44 +267,142 @@
         </div>
       </section>
 
+      <section class="view hidden" id="view-reabastecimiento">
+        <div class="view-head">
+          <div><h1>Qué comprar</h1><p class="muted">Sugerencias de compra según tus ventas y tiempos de entrega <span id="reabInfo"></span></p></div>
+        </div>
+        <div id="reabAlert"></div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table class="data-table" id="reabTable">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="num">En stock</th>
+                  <th class="num">Venta prom./día</th>
+                  <th class="num">Pronóstico</th>
+                  <th class="num">Reserva</th>
+                  <th class="num">Pedir al llegar a</th>
+                  <th class="num">Cantidad a pedir</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view hidden" id="view-auditoria">
+        <div class="view-head">
+          <div><h1>Conteos de almacén</h1><p class="muted">Cuenta lo que hay en físico y el sistema ajusta solo la diferencia</p></div>
+          <button class="btn btn-primary" id="btnNuevoConteo"><svg class="i"><use href="#i-plus"/></svg> Nuevo conteo</button>
+        </div>
+        <div class="kpi-grid cols3" id="iraKpis"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Historial de conteos</h3></div>
+          <div class="table-wrap">
+            <table class="data-table" id="audTable">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Producto</th>
+                  <th class="num">Sistema</th>
+                  <th class="num">Físico</th>
+                  <th class="num">Diferencia</th>
+                  <th>Motivo</th>
+                  <th>Ajuste</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section class="view hidden" id="view-configuracion">
-        <div class="view-head"><h1>Configuración</h1></div>
+        <div class="view-head"><div><h1>Configuración</h1><p class="muted">Ajusta el sistema a tu ritmo de ventas</p></div></div>
         <div class="panel narrow">
-          <div class="panel-head"><h3>Umbrales de Rotación (días sin movimiento)</h3></div>
-          <p class="muted">Define los rangos de días que determinan la semaforización de estados.</p>
+          <div class="panel-head"><h3>Días sin movimiento</h3></div>
+          <p class="muted">Después del último rango, el producto se marca como dormido.</p>
           <form id="configForm" class="config-form">
-            <label><span><i class="dot sana"></i>Rotación Sana — hasta</span>
+            <label><span><i class="dot sana"></i>Rotación sana — hasta</span>
               <input type="number" min="0" step="1" id="cfgSana" class="input" required />
             </label>
-            <label><span><i class="dot lenta"></i>Rotación Lenta — hasta</span>
+            <label><span><i class="dot lenta"></i>Rotación lenta — hasta</span>
               <input type="number" min="0" step="1" id="cfgLenta" class="input" required />
             </label>
-            <label><span><i class="dot muyLenta"></i>Rotación Muy Lenta — hasta</span>
+            <label><span><i class="dot muyLenta"></i>Rotación muy lenta — hasta</span>
               <input type="number" min="0" step="1" id="cfgMuyLenta" class="input" required />
             </label>
-            <p class="muted" style="font-size: 0.8rem; margin-top: 10px;">
-              * Los productos con días sin movimiento superiores a "Muy Lenta" pasarán automáticamente a estado <i class="dot dormido" style="margin:0 4px 0 2px"></i>"Inventario Dormido".
-            </p>
-            <div class="form-actions" style="margin-top: 20px;">
+            <div class="form-actions" style="margin-top:20px;">
               <button type="submit" class="btn btn-primary">Guardar cambios</button>
               <button type="button" id="btnResetConfig" class="btn btn-ghost">Restablecer por defecto</button>
             </div>
           </form>
         </div>
+        <div class="panel narrow">
+          <div class="panel-head"><h3>Datos del negocio</h3></div>
+          <form id="bizForm" class="config-form">
+            <label><span>Nombre del negocio</span>
+              <input type="text" id="cfgEmpresa" class="input" />
+            </label>
+            <label><span>Apariencia</span>
+              <select id="cfgTema" class="input">
+                <option value="dark">Oscuro</option>
+                <option value="light">Claro</option>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+          </form>
+        </div>
       </section>
 
-      <section class="view hidden" id="view-exportar">
-        <div class="view-head"><h1>Exportar Datos</h1></div>
+      <section class="view hidden" id="view-respaldos">
+        <div class="view-head"><div><h1>Copias de seguridad</h1><p class="muted">Toda tu información en un solo archivo para llevarla a otra computadora</p></div></div>
         <div class="panel narrow">
-          <div class="panel-head"><h3>Reporte Excel (.xlsx)</h3></div>
-          <p class="muted">El archivo respeta estrictamente el período de análisis seleccionado en la cabecera
-            (<strong id="exportPeriodLbl">1 mes</strong>).</p>
+          <div class="panel-head"><h3>Guardar / recuperar</h3></div>
+          <p class="muted">El sistema guarda una copia automática por día y borra las que tienen más de 30 días.</p>
+          <div class="imp-row">
+            <button class="btn btn-primary" id="btnExport"><svg class="i"><use href="#i-download"/></svg> Descargar copia completa</button>
+            <label class="btn btn-ghost" style="cursor:pointer"><svg class="i"><use href="#i-upload"/></svg> Cargar copia<input type="file" id="fileImport" accept=".json" hidden /></label>
+            <button class="btn btn-ghost" id="btnListBk">Ver copias automáticas</button>
+          </div>
+          <div class="bk-list" id="bkList"></div>
+        </div>
+      </section>
+
+      <section class="view hidden" id="view-reportes">
+        <div class="view-head"><div><h1>Informes</h1><p class="muted">Elige el período del informe y genera los documentos</p></div></div>
+        <div class="panel narrow">
+          <div class="panel-head"><h3>Generar documentos</h3></div>
+          <div class="toolbar" style="margin-bottom:14px">
+            <label class="period-selector">
+              <span class="period-label">Período del informe</span>
+              <select id="repPeriodo">
+                <option value="hoy">Hoy</option>
+                <option value="7">Esta semana</option>
+                <option value="15">Últimos 15 días</option>
+                <option value="30" selected>Último mes</option>
+                <option value="90">Últimos 3 meses</option>
+                <option value="180">Último medio año</option>
+                <option value="365">Último año</option>
+                <option value="siempre">Siempre</option>
+              </select>
+            </label>
+          </div>
           <ul class="export-sheets">
-            <li><strong>Hoja 1 — Resumen:</strong> indicadores principales del dashboard.</li>
-            <li><strong>Hoja 2 — Productos:</strong> detalle por producto y listado maestro.</li>
-            <li><strong>Hoja 3 — Movimientos:</strong> historial analítico del período.</li>
+            <li><strong>Informe en PDF:</strong> resumen, detalle, gráficos, clasificación, compras y conteos.</li>
+            <li><strong>Libro Excel (4 hojas):</strong> capas FIFO con fórmulas vivas, clasificación ABC, plan de compras y resumen.</li>
           </ul>
-          <button class="btn btn-primary" id="btnExport"><svg class="i"><use href="#i-download"/></svg> Generar y descargar Excel</button>
+          <div class="imp-row">
+            <button class="btn btn-primary" id="btnPDF"><svg class="i"><use href="#i-doc"/></svg> Generar PDF</button>
+            <button class="btn btn-primary" id="btnXLSX"><svg class="i"><use href="#i-download"/></svg> Generar Excel</button>
+            <button class="btn btn-ghost" id="btnPrint">Imprimir</button>
+          </div>
         </div>
       </section>
 
@@ -267,6 +423,8 @@
 
   <script src="assets/vendor/chart.umd.min.js"></script>
   <script src="assets/vendor/xlsx.full.min.js"></script>
-  <script src="script.js"></script>
+  <script src="assets/vendor/jspdf.umd.min.js"></script>
+  <script src="assets/vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

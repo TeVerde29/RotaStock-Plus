@@ -1,6 +1,4 @@
 node_modules/
 dist/
 backups/*.json
-electron.out
-electron.err
-*.log
+datos/inventario.json
