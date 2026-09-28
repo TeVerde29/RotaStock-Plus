@@ -123,6 +123,8 @@ El núcleo es el replay cronológico verificado del RotaStock original: los movi
 
 La **clasificación ABC** no usa cortes rígidos 80/95: el asignador heurístico por proximidad compara, al cruzar cada umbral, qué tan cerca queda el acumulado incluyendo vs. excluyendo el producto (el empate promueve). La **estabilidad XYZ** mide qué tan parejas son las ventas mes a mes (Estable / Variable / Irregular) y define cada cuánto contar cada grupo (A: 30 días, B: 60, C: 120).
 
+> La memoria descriptiva completa del proyecto está disponible en [`docs/Memoria_Descriptiva_RotaStock_Plus.pdf`](./docs/Memoria_Descriptiva_RotaStock_Plus.pdf).
+
 ---
 
 ## Descarga
