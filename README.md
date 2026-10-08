@@ -1,4 +1,4 @@
-# RotaStock Plus — Control de Inventario con FIFO (9 Módulos)
+# RotaStock Plus — Control de Inventario con FIFO
 
 > Aplicación de escritorio para Windows (Electron) para registrar compras y ventas, valorar el inventario con FIFO (PEPS), clasificar productos con ABC heurístico, planificar compras, auditar el almacén con conteos físicos y generar informes ejecutivos en PDF y Excel — todo 100% offline con un único archivo JSON de estado.
 
