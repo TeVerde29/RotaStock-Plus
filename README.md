@@ -12,9 +12,12 @@
 </p>
 
 <p align="center">
-  <img src="./img/panel-control.png" alt="Panel de control de RotaStock Plus" width="640">
-  <img src="./img/clasificacion-abc.png" alt="Clasificación ABC de RotaStock Plus" width="640">
-  <img src="./img/productos.png" alt="Vista de productos de RotaStock Plus" width="640">
+  <img src="./img/panel-control.png" alt="Panel de control de RotaStock Plus" width="49%">
+  <img src="./img/productos.png" alt="Vista de productos de RotaStock Plus" width="49%"><br>
+  <img src="./img/clasificacion-abc.png" alt="Clasificación ABC de RotaStock Plus" width="49%">
+  <img src="./img/movimientos.png" alt="Historial de movimientos de RotaStock Plus" width="49%"><br>
+  <img src="./img/que-comprar.png" alt="Sugerencias de compra de RotaStock Plus" width="49%">
+  <img src="./img/conteos-almacen.png" alt="Conteos de almacén de RotaStock Plus" width="49%">
 </p>
 
 ---
