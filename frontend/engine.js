@@ -27,21 +27,52 @@
 
   const Engine = {
     /**
+     * Convierte una cadena YYYY-MM-DD o Date al inicio (00:00:00.000) o fin (23:59:59.999) del día en hora local.
+     */
+    parseBoundaryDate(val, isEnd = false) {
+      if (!val) return new Date();
+      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+        const [y, m, d] = val.trim().split('-').map(Number);
+        return isEnd
+          ? new Date(y, m - 1, d, 23, 59, 59, 999)
+          : new Date(y, m - 1, d, 0, 0, 0, 0);
+      }
+      const dt = new Date(val);
+      if (Number.isNaN(dt.getTime())) return new Date();
+      return dt;
+    },
+
+    /**
      * Determina la ventana de tiempo [start, end] y su duración en días (Sección 3.1).
+     * Soporta 'hoy', 0/'siempre' (todo el historial), número de días (ej. 30) o rango personalizado { start, end }.
      */
     range(days) {
+      if (days && typeof days === 'object' && (days.start || days.end)) {
+        let start = this.parseBoundaryDate(days.start || days.end, false);
+        let end = this.parseBoundaryDate(days.end || days.start, true);
+        if (start > end) {
+          start = this.parseBoundaryDate(days.end, false);
+          end = this.parseBoundaryDate(days.start, true);
+        }
+        return {
+          start,
+          end,
+          days: Math.max(1, Math.round((end - start) / MS_PER_DAY)),
+          isCustom: true
+        };
+      }
       const end = new Date();
       let start;
       if (days === 'hoy') {
         start = new Date();
         start.setHours(0, 0, 0, 0);
-      } else if (!days) {
+      } else if (!days || days === 'siempre' || days === 'all') {
         const all = Store.db.movimientos.map(m => new Date(m.timestamp).getTime());
         start = new Date(all.length ? Math.min(...all) : Date.now());
       } else {
-        start = new Date(end.getTime() - days * MS_PER_DAY);
+        start = new Date(end.getTime() - Number(days) * MS_PER_DAY);
       }
-      return { start, end, days: Math.max(1, Math.floor((end - start) / MS_PER_DAY)) };
+      return { start, end, days: Math.max(1, Math.floor((end - start) / MS_PER_DAY)), isCustom: false };
     },
 
     /**
@@ -49,7 +80,7 @@
      */
     compute(days) {
       const db = Store.db;
-      const { start, end, days: delta } = this.range(days);
+      const { start, end, days: delta, isCustom } = this.range(days);
       const th = db.config.umbrales;
       const movs = [...db.movimientos].sort(
         (a, b) => new Date(a.timestamp) - new Date(b.timestamp) || String(a.id).localeCompare(String(b.id))
@@ -71,6 +102,7 @@
       for (const m of movs) {
         if (!lots[m.productoId]) continue;
         const t = new Date(m.timestamp);
+        if (isCustom && t > end) continue;
         if (m.tipo === 'compra' || m.tipo === 'ajuste_excedente') {
           lots[m.productoId].push({
             remaining: m.cantidad,

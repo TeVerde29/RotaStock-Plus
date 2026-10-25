@@ -24,7 +24,7 @@ function backupDir() { return path.join(getBasePath(), 'backups'); }
 
 function defaultDB() {
   return {
-    meta: { sistema: 'RotaStock Plus', versionEsquema: '2.0.0', createdAt: new Date().toISOString(), totalProductos: 0, totalMovimientos: 0 },
+    meta: { sistema: 'RotaStock Plus', versionEsquema: '2.0.2', createdAt: new Date().toISOString(), totalProductos: 0, totalMovimientos: 0 },
     config: {
       metodoCosteo: 'FIFO',
       umbrales: { sana: 7, lenta: 15, muyLenta: 30 },
@@ -40,6 +40,27 @@ function ensureFiles() {
   const d = path.dirname(dbPath());
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   if (!fs.existsSync(backupDir())) fs.mkdirSync(backupDir(), { recursive: true });
+
+  // Si existen copias históricas semilla en el proyecto, copiarlas si aún no están en backups del usuario
+  const seedBackupsDir = path.join(__dirname, 'backups');
+  if (fs.existsSync(seedBackupsDir)) {
+    try {
+      for (const f of fs.readdirSync(seedBackupsDir)) {
+        if (!f.endsWith('.json')) continue;
+        const dst = path.join(backupDir(), f);
+        if (!fs.existsSync(dst)) {
+          const src = path.join(seedBackupsDir, f);
+          const raw = fs.readFileSync(src, 'utf8');
+          if (parseAndValidateDB(raw).valid) {
+            writeFileAtomicSync(dst, raw);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Main] No se pudieron copiar respaldos iniciales:', err.message);
+    }
+  }
+
   if (!fs.existsSync(dbPath())) {
     // Primera vez: trae la semilla del proyecto si existe, si no arranca con defaultDB
     const semilla = path.join(__dirname, 'datos', 'inventario.json');
@@ -84,11 +105,16 @@ function dayStamp(d = new Date()) {
 }
 
 function pruneBackups() {
-  // Elimina copias con más de 30 días (por fecha de modificación)
+  // Elimina copias con más de 30 días, conservando siempre al menos las 15 copias más recientes
   try {
+    const files = fs
+      .readdirSync(backupDir())
+      .filter(f => f.startsWith('inventario-') && f.endsWith('.json'))
+      .sort()
+      .reverse();
+    if (files.length <= 15) return;
     const limite = Date.now() - BACKUP_RETENTION_DAYS * MS_PER_DAY;
-    for (const f of fs.readdirSync(backupDir())) {
-      if (!f.startsWith('inventario-') || !f.endsWith('.json')) continue;
+    for (const f of files.slice(15)) {
       const p = path.join(backupDir(), f);
       if (fs.statSync(p).mtimeMs < limite) {
         fs.unlinkSync(p);

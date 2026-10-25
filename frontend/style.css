@@ -405,3 +405,36 @@ textarea.input{resize:vertical;min-height:64px}
 .abc-chips{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.8rem;color:var(--muted)}
 .abc-chips .dot{margin-right:4px}
 @media(max-width:900px){.abc-cats{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- Rango de Fechas Personalizado (Desde / Hasta) ---------- */
+.period-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.custom-range{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px}
+.range-field{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted);font-weight:600}
+.range-field span{text-transform:uppercase;letter-spacing:.05em;font-size:.7rem}
+.range-field .input{padding:4px 8px;font-size:.84rem;height:30px}
+
+/* ---------- Modo Viaje en el Tiempo (Copias Históricas / Solo Lectura) ---------- */
+.snapshot-selector{border-color:var(--border)}
+body.is-readonly .snapshot-selector{border-color:var(--lenta);background:var(--lenta-bg)}
+body.is-readonly .snapshot-selector .period-label{color:var(--lenta)}
+.time-travel-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  background:var(--lenta-bg);border:1px solid var(--lenta);border-left:5px solid var(--lenta);
+  color:var(--text);padding:12px 16px;border-radius:var(--radius);margin-bottom:22px;
+  box-shadow:var(--shadow);
+}
+.time-travel-banner .tt-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.9rem;line-height:1.4}
+.time-travel-banner .tt-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bk-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;
+  border:1px solid var(--border-soft);border-radius:var(--radius-sm);background:var(--field);flex-wrap:wrap}
+.bk-row.active-bk{border-color:var(--lenta);background:var(--lenta-bg)}
+.bk-row-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+body.is-readonly #btnNuevoProducto,
+body.is-readonly #btnNuevoMovimiento,
+body.is-readonly #btnNuevoConteo,
+body.is-readonly #configForm button[type="submit"],
+body.is-readonly #btnResetConfig,
+body.is-readonly #bizForm button[type="submit"]{
+  opacity:.5;
+}

@@ -206,7 +206,13 @@
 
   function repDays() {
     const v = $('#repPeriodo')?.value || '30';
-    return v === 'hoy' ? 'hoy' : v === 'siempre' ? 0 : +v;
+    if (v === 'custom') {
+      const s = $('#repFrom')?.value;
+      const e = $('#repTo')?.value;
+      if (s || e) return { start: s || e, end: e || s };
+      return 30;
+    }
+    return v === 'hoy' ? 'hoy' : v === 'siempre' || v === 'all' ? 0 : +v;
   }
 
   function chartPNG(kind, R) {

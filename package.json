@@ -1,6 +1,6 @@
 {
   "name": "rotastock-plus",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "RotaStock Plus — Control de rotación FIFO (PEPS), 9 módulos, 100% offline, estado único JSON",
   "author": "Pedro Giovanni Ricra Figueroa",
   "main": "main.js",
@@ -47,6 +47,8 @@
       "preload.js",
       "package.json",
       "src/**/*",
+      "datos/**/*",
+      "backups/**/*",
       "frontend/**/*",
       "!frontend/vendor/.gitkeep"
     ],

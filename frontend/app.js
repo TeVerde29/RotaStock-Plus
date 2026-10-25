@@ -84,6 +84,72 @@
     $('#modalOverlay')?.classList.add('hidden');
   }
 
+  function guardWriteAction() {
+    if (Store.isReadOnly()) {
+      toast(
+        `Modo lectura: estás viendo "${Store.activeSnapshotName}". Pulsa "Volver a la versión actual" para hacer cambios.`,
+        'err'
+      );
+      return true;
+    }
+    return false;
+  }
+
+  function toISODateInput(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function initDefaultDateInputs() {
+    const today = new Date();
+    const past14 = new Date(today.getTime() - 14 * MS_PER_DAY);
+    const sFrom = toISODateInput(past14);
+    const sTo = toISODateInput(today);
+    ['dashFrom', 'movFrom', 'repFrom'].forEach(id => {
+      const el = $('#' + id);
+      if (el && !el.value) el.value = sFrom;
+    });
+    ['dashTo', 'movTo', 'repTo'].forEach(id => {
+      const el = $('#' + id);
+      if (el && !el.value) el.value = sTo;
+    });
+  }
+
+  function resolveDashPeriod() {
+    const v = $('#periodSelect')?.value || '30';
+    const box = $('#dashCustomRange');
+    if (v === 'custom') {
+      box?.classList.remove('hidden');
+      const s = $('#dashFrom')?.value;
+      const e = $('#dashTo')?.value;
+      return s || e ? { start: s || e, end: e || s } : 30;
+    }
+    box?.classList.add('hidden');
+    return v === 'all' || v === 'siempre' ? 0 : v === 'hoy' ? 'hoy' : +v;
+  }
+
+  function syncTimeTravelUI() {
+    const ro = Store.isReadOnly();
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('is-readonly', ro);
+    }
+    const banner = $('#timeTravelBanner');
+    const txt = $('#timeTravelText');
+    const badge = $('#snapshotStatusBadge');
+    if (banner) {
+      if (ro) {
+        banner.classList.remove('hidden');
+        if (txt) {
+          txt.innerHTML = `Estás viendo la copia <strong>${esc(Store.activeSnapshotName)}</strong> (${Store.db.productos.length} productos · ${Store.db.movimientos.length} movimientos). Tus datos actuales siguen intactos.`;
+        }
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+    if (badge) {
+      badge.textContent = ro ? 'Copia histórica' : 'Versión';
+    }
+  }
+
   function styleCharts() {
     if (typeof window === 'undefined' || !window.Chart) return;
     window.Chart.defaults.color = css('--muted');
@@ -100,7 +166,7 @@
     reabastecimiento: () => renderReab(),
     auditoria: () => renderAud(),
     configuracion: () => renderCfg(),
-    respaldos: () => {},
+    respaldos: () => listBackups(true),
     reportes: () => {}
   };
 
@@ -115,6 +181,7 @@
   async function renderAll(forceAll = false) {
     State.comp = Engine.compute(State.period);
     styleCharts();
+    syncTimeTravelUI();
 
     const cap = $('#periodCaption');
     if (cap) {
@@ -316,6 +383,7 @@
   }
 
   function editProd(id) {
+    if (guardWriteAction()) return;
     const p = Store.db.productos.find(x => x.id === id);
     if (!p) return;
     openModal(
@@ -344,6 +412,7 @@
   }
 
   function delProd(id) {
+    if (guardWriteAction()) return;
     const p = Store.db.productos.find(x => x.id === id);
     if (!p) return;
     const n = Store.db.movimientos.filter(m => m.productoId === id).length;
@@ -437,22 +506,35 @@
     const q = ($('#movSearch').value || '').toLowerCase(), f = $('#movFilterTipo').value;
     const names = Object.fromEntries(Store.db.productos.map(p => [p.id, p.nombre]));
     const pr = $('#movPeriodo').value;
+    const customBox = $('#movCustomRange');
     let desde = 0;
-    if (pr === 'hoy') {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
-      desde = d.getTime();
-    } else if (pr !== 'siempre') {
-      desde = Date.now() - +pr * MS_PER_DAY;
+    let hasta = Infinity;
+    if (pr === 'custom') {
+      customBox?.classList.remove('hidden');
+      const r = Engine.range({ start: $('#movFrom')?.value, end: $('#movTo')?.value });
+      desde = r.start.getTime();
+      hasta = r.end.getTime();
+    } else {
+      customBox?.classList.add('hidden');
+      if (pr === 'hoy') {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        desde = d.getTime();
+      } else if (pr !== 'siempre') {
+        desde = Date.now() - +pr * MS_PER_DAY;
+      }
     }
 
     const rows = [...Store.db.movimientos]
-      .filter(
-        m =>
+      .filter(m => {
+        const ts = new Date(m.timestamp).getTime();
+        return (
           (names[m.productoId] || '').toLowerCase().includes(q) &&
           (!f || m.tipo === f || (f === 'compra' && m.tipo === 'ajuste_excedente')) &&
-          new Date(m.timestamp).getTime() >= desde
-      )
+          ts >= desde &&
+          ts <= hasta
+        );
+      })
       .map(m => ({ ...m, producto: names[m.productoId] || '(eliminado)', fecha: new Date(m.timestamp).getTime() }));
 
     rows.sort((a, b) => {
@@ -490,6 +572,7 @@
     $$('#movTable [data-dmov]').forEach(
       b =>
         (b.onclick = async () => {
+          if (guardWriteAction()) return;
           Store.db.movimientos = Store.db.movimientos.filter(x => x.id !== b.dataset.dmov);
           await Store.save();
           renderAll();
@@ -499,6 +582,7 @@
   }
 
   function editMov(id) {
+    if (guardWriteAction()) return;
     const m = id ? Store.db.movimientos.find(x => x.id === id) : null;
     const prods = Store.db.productos;
     openModal(
@@ -626,6 +710,7 @@
   }
 
   function editConteo(id) {
+    if (guardWriteAction()) return;
     const c = Store.db.conteosCiclicos.find(x => x.id === id);
     if (!c) return;
     const nombre = (Store.db.productos.find(p => p.id === c.productoId) || {}).nombre || '(eliminado)';
@@ -671,6 +756,7 @@
   }
 
   function revertConteo(id) {
+    if (guardWriteAction()) return;
     const c = Store.db.conteosCiclicos.find(x => x.id === id);
     if (!c) return;
     openModal(
@@ -692,6 +778,7 @@
   }
 
   function newConteo() {
+    if (guardWriteAction()) return;
     const prods = Store.db.productos;
     if (!prods.length) {
       toast('Primero crea un producto', 'err');
@@ -752,54 +839,179 @@
     $('#cfgTema').value = document.documentElement.dataset.theme;
   }
 
-  /* ---------- 08 Copias de Seguridad ---------- */
+  /* ---------- 08 Copias de Seguridad y Modo Viaje en el Tiempo ---------- */
   function exportJSON() {
     const a = document.createElement('a');
+    const suffix = Store.isReadOnly()
+      ? `_copia_${Store.activeSnapshotName.replace(/[^a-zA-Z0-9_-]/g, '_')}`
+      : `_${new Date().toISOString().slice(0, 10)}`;
     a.href = URL.createObjectURL(new Blob([JSON.stringify(Store.db, null, 2)], { type: 'application/json' }));
-    a.download = `inventario_completo_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `inventario_completo${suffix}.json`;
     a.click();
     toast('Copia descargada', 'ok');
   }
 
-  async function listBackups() {
-    if (!window.rotastock?.isElectron) {
-      toast('Las copias automáticas están en la versión de escritorio', 'err');
-      return;
-    }
+  async function activateBackupPreview(name) {
     try {
-      const l = await window.rotastock.listBackups();
-      $('#bkList').innerHTML =
+      const raw = await window.rotastock.readBackup(name);
+      const parsed = JSON.parse(raw);
+      if (!Store.previewSnapshot(parsed, name)) {
+        throw new Error('Estructura de copia inválida');
+      }
+      applyTheme();
+      await listBackups(true);
+      renderAll();
+      toast(`Modo lectura: viendo copia ${name}`, 'ok');
+    } catch (err) {
+      console.error('[App] Error al abrir copia en modo lectura:', err.message);
+      toast('No se pudo abrir la copia seleccionada', 'err');
+    }
+  }
+
+  function exitBackupPreview() {
+    if (!Store.isReadOnly()) return;
+    Store.exitSnapshot();
+    applyTheme();
+    listBackups(true);
+    renderAll();
+    toast('Volviste a la base de datos actual (En vivo)', 'ok');
+  }
+
+  function confirmRestoreCurrentSnapshot() {
+    if (!Store.isReadOnly()) return;
+    const snapName = Store.activeSnapshotName;
+    openModal(
+      'Restaurar esta copia como actual',
+      `<p>¿Deseas reemplazar tu inventario actual con los datos de la copia <strong>${esc(snapName)}</strong>?</p>
+      <p class="muted">Antes de sobrescribir, el sistema conservará el respaldo diario automático.</p>
+      <div class="form-actions"><button class="btn btn-primary" id="mConfirmRestore">Sí, restaurar como actual</button><button class="btn btn-ghost" id="mCancelRestore">Cancelar</button></div>`
+    );
+    $('#mCancelRestore').onclick = closeModal;
+    $('#mConfirmRestore').onclick = async () => {
+      await Store.restoreSnapshotAsLive();
+      closeModal();
+      applyTheme();
+      await listBackups(true);
+      renderAll();
+      toast(`Copia "${snapName}" restaurada como versión actual`, 'ok');
+    };
+  }
+
+  async function listBackups(silent = false) {
+    const sel = $('#snapshotSelect');
+    const bkContainer = $('#bkList');
+    let l = [];
+    if (typeof window !== 'undefined' && window.rotastock?.isElectron) {
+      try {
+        l = await window.rotastock.listBackups();
+      } catch (err) {
+        console.error('[App] Error al listar copias:', err.message);
+        if (!silent) toast('Error al consultar copias automáticas', 'err');
+      }
+    } else if (!silent) {
+      toast('Las copias automáticas de carpeta están en la versión de escritorio; puedes abrir cualquier .json con "Ver archivo .json"', 'ok');
+    }
+
+    if (sel) {
+      const currentSnap = Store.activeSnapshotName;
+      const isExt = currentSnap && !l.includes(currentSnap);
+      sel.innerHTML =
+        `<option value="__live__">🟢 Versión actual (En vivo)</option>` +
+        (isExt ? `<option value="__ext__" selected>📂 ${esc(currentSnap)} (Solo lectura)</option>` : '') +
         l
-          .slice(0, 20)
+          .slice(0, 30)
           .map(
             n =>
-              `<div class="kv"><span class="mono">${esc(n)}</span><button class="btn btn-ghost" data-bk="${esc(n)}" style="padding:5px 10px">Recuperar</button></div>`
+              `<option value="${esc(n)}" ${currentSnap === n ? 'selected' : ''}>🕒 ${esc(n)} (Solo lectura)</option>`
           )
-          .join('') || '<p class="muted">Aún no hay copias automáticas.</p>';
-      $$('#bkList [data-bk]').forEach(
-        b =>
-          (b.onclick = async () => {
+          .join('') +
+        `<option value="__open_file__">📂 Abrir otro archivo .json en modo lectura…</option>`;
+      if (!currentSnap) sel.value = '__live__';
+    }
+
+    if (!bkContainer) return;
+
+    const liveRow = `<div class="bk-row ${!Store.isReadOnly() ? 'active-bk' : ''}">
+      <div>
+        <strong>🟢 Base de datos actual (En vivo)</strong>
+        <div class="muted" style="margin-top:2px;font-size:.8rem">Tus datos de trabajo del día de hoy</div>
+      </div>
+      <div class="bk-row-actions">
+        ${
+          Store.isReadOnly()
+            ? `<button class="btn btn-primary" id="btnBkReturnLive" style="padding:5px 12px">Volver a versión actual</button>`
+            : `<span class="badge abc">Activa ahora</span>`
+        }
+      </div>
+    </div>`;
+
+    const backupRows = l
+      .slice(0, 25)
+      .map(n => {
+        const isCurrent = Store.activeSnapshotName === n;
+        return `<div class="bk-row ${isCurrent ? 'active-bk' : ''}">
+          <div>
+            <span class="mono"><strong>${esc(n)}</strong></span>
+            ${isCurrent ? `<span class="badge warn" style="margin-left:6px">Viendo en pantalla</span>` : ''}
+          </div>
+          <div class="bk-row-actions">
+            <button class="btn ${isCurrent ? 'btn-primary' : 'btn-ghost'}" data-preview-bk="${esc(n)}" style="padding:5px 10px">
+              ${isCurrent ? 'Viendo copia' : 'Ver en pantalla (Solo lectura)'}
+            </button>
+            <button class="btn btn-ghost" data-bk="${esc(n)}" style="padding:5px 10px">Restaurar como actual</button>
+          </div>
+        </div>`;
+      })
+      .join('');
+
+    bkContainer.innerHTML =
+      liveRow +
+      (backupRows || '<p class="muted" style="margin-top:8px">No se encontraron copias automáticas previas en la carpeta backups.</p>');
+
+    const btnLive = $('#btnBkReturnLive');
+    if (btnLive) btnLive.onclick = exitBackupPreview;
+
+    $$('#bkList [data-preview-bk]').forEach(
+      b =>
+        (b.onclick = () => {
+          activateBackupPreview(b.dataset.previewBk);
+        })
+    );
+
+    $$('#bkList [data-bk]').forEach(
+      b =>
+        (b.onclick = () => {
+          const bkName = b.dataset.bk;
+          openModal(
+            'Restaurar copia como actual',
+            `<p>¿Seguro que deseas reemplazar la base de datos actual con la copia <strong>${esc(bkName)}</strong>?</p>
+            <p class="muted">Si solo quieres consultar los datos sin sobrescribir tu inventario actual, usa el botón <strong>"Ver en pantalla (Solo lectura)"</strong>.</p>
+            <div class="form-actions"><button class="btn btn-primary" id="mDoRestore">Sí, reemplazar actual</button><button class="btn btn-ghost" id="mNoRestore">Cancelar</button></div>`
+          );
+          $('#mNoRestore').onclick = closeModal;
+          $('#mDoRestore').onclick = async () => {
             try {
-              const raw = await window.rotastock.readBackup(b.dataset.bk);
+              const raw = await window.rotastock.readBackup(bkName);
               const parsed = JSON.parse(raw);
               if (!Store.isValidStructure(parsed)) {
                 throw new Error('Estructura de copia inválida');
               }
+              Store.liveDb = null;
+              Store.activeSnapshotName = null;
               Store.db = Store.normalize(parsed);
               await Store.save();
+              closeModal();
               applyTheme();
+              await listBackups(true);
               renderAll();
-              toast('Copia recuperada', 'ok');
+              toast(`Copia ${bkName} restaurada como actual`, 'ok');
             } catch (err) {
               console.error('[App] Error al recuperar copia:', err.message);
               toast('No se pudo recuperar la copia seleccionada', 'err');
             }
-          })
-      );
-    } catch (err) {
-      console.error('[App] Error al listar copias:', err.message);
-      toast('Error al consultar copias automáticas', 'err');
-    }
+          };
+        })
+    );
   }
 
   /* ---------- 09 Informes ---------- */
@@ -807,7 +1019,11 @@
     try {
       const R = Engine.compute(repDays());
       const wb = buildWorkbook(R, $('#abcBase').value);
-      const periodo = $('#repPeriodo').selectedOptions[0].textContent.replace(/\s/g, '');
+      const selVal = $('#repPeriodo')?.value;
+      const periodo =
+        selVal === 'custom'
+          ? `${fmtD(R.start)}_a_${fmtD(R.end)}`
+          : ($('#repPeriodo')?.selectedOptions[0]?.textContent || 'Periodo').replace(/\s+/g, '');
       globalThis.XLSX.writeFile(wb, `RotaStock_Informe_${periodo}_${R.end.toISOString().slice(0, 10)}.xlsx`, { cellDates: true });
       toast('Excel generado', 'ok');
     } catch (err) {
@@ -864,19 +1080,80 @@
         })
     );
 
-    $('#periodSelect').onchange = e => {
-      State.period = e.target.value === 'all' ? 0 : +e.target.value;
+    $('#periodSelect').onchange = () => {
+      State.period = resolveDashPeriod();
       State.dashPage = 1;
       renderAll();
     };
+    const onDashDateChange = () => {
+      if ($('#periodSelect')?.value === 'custom') {
+        State.period = resolveDashPeriod();
+        State.dashPage = 1;
+        renderAll();
+      }
+    };
+    if ($('#dashFrom')) $('#dashFrom').onchange = onDashDateChange;
+    if ($('#dashTo')) $('#dashTo').onchange = onDashDateChange;
+
+    if ($('#snapshotSelect')) {
+      $('#snapshotSelect').onchange = async e => {
+        const val = e.target.value;
+        if (val === '__live__') {
+          exitBackupPreview();
+        } else if (val === '__open_file__') {
+          $('#filePreview')?.click();
+          e.target.value = Store.activeSnapshotName || '__live__';
+        } else if (val !== '__ext__') {
+          await activateBackupPreview(val);
+        }
+      };
+    }
+
+    if ($('#btnExitSnapshot')) {
+      $('#btnExitSnapshot').onclick = exitBackupPreview;
+    }
+    if ($('#btnRestoreSnapshot')) {
+      $('#btnRestoreSnapshot').onclick = confirmRestoreCurrentSnapshot;
+    }
+    if ($('#btnPreviewExternal')) {
+      $('#btnPreviewExternal').onclick = () => $('#filePreview')?.click();
+    }
+    if ($('#filePreview')) {
+      $('#filePreview').onchange = e => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = async () => {
+          try {
+            const d = JSON.parse(r.result);
+            if (!Store.previewSnapshot(d, f.name)) {
+              throw new Error('Estructura de archivo inválida');
+            }
+            applyTheme();
+            await listBackups(true);
+            renderAll();
+            toast(`Viendo archivo "${f.name}" en modo lectura`, 'ok');
+          } catch (err) {
+            console.warn('[App] Archivo de vista previa inválido:', err.message);
+            toast('Ese archivo no es una copia válida', 'err');
+          }
+        };
+        r.readAsText(f);
+        e.target.value = '';
+      };
+    }
+
     $('#btnRefresh').onclick = () => {
+      listBackups(true);
       renderAll();
       toast('Datos actualizados', 'ok');
     };
     $('#btnTheme').onclick = async () => {
       Store.db.config.preferenciasUI.tema = document.documentElement.dataset.theme === 'dark' ? 'claro' : 'oscuro';
       applyTheme();
-      await Store.save();
+      if (!Store.isReadOnly()) {
+        await Store.save();
+      }
     };
     $('#btnToggleSidebar').onclick = () => {
       document.body.classList.toggle('sidebar-closed');
@@ -912,6 +1189,7 @@
     };
 
     $('#btnNuevoProducto').onclick = () => {
+      if (guardWriteAction()) return;
       openModal(
         'Nuevo producto',
         `<div class="form-grid">
@@ -978,6 +1256,20 @@
       State.movPage = 1;
       renderMovs();
     };
+    const onMovDateChange = () => {
+      if ($('#movPeriodo')?.value === 'custom') {
+        State.movPage = 1;
+        renderMovs();
+      }
+    };
+    if ($('#movFrom')) $('#movFrom').onchange = onMovDateChange;
+    if ($('#movTo')) $('#movTo').onchange = onMovDateChange;
+
+    if ($('#repPeriodo')) {
+      $('#repPeriodo').onchange = e => {
+        $('#repCustomRange')?.classList.toggle('hidden', e.target.value !== 'custom');
+      };
+    }
     $$('#movTable th[data-sort]').forEach(
       th =>
         (th.onclick = () => {
@@ -994,6 +1286,7 @@
 
     $('#configForm').onsubmit = async e => {
       e.preventDefault();
+      if (guardWriteAction()) return;
       const s = +$('#cfgSana').value, l = +$('#cfgLenta').value, m = +$('#cfgMuyLenta').value;
       if (!(Number.isFinite(s) && Number.isFinite(l) && Number.isFinite(m) && s >= 0 && s <= l && l <= m)) {
         toast('Los días deben ir de menor a mayor', 'err');
@@ -1006,6 +1299,7 @@
     };
 
     $('#btnResetConfig').onclick = async () => {
+      if (guardWriteAction()) return;
       Store.db.config.umbrales = { ...DEFAULT_UMBRALES };
       await Store.save();
       renderAll();
@@ -1014,6 +1308,7 @@
 
     $('#bizForm').onsubmit = async e => {
       e.preventDefault();
+      if (guardWriteAction()) return;
       Store.db.config.preferenciasUI.nombreEmpresa = $('#cfgEmpresa').value.trim();
       Store.db.config.preferenciasUI.tema = $('#cfgTema').value === 'light' ? 'claro' : 'oscuro';
       applyTheme();
@@ -1033,11 +1328,14 @@
           if (!Store.isValidStructure(d)) {
             throw new Error('Estructura de archivo inválida');
           }
+          Store.liveDb = null;
+          Store.activeSnapshotName = null;
           Store.db = Store.normalize(d);
           await Store.save();
           applyTheme();
+          await listBackups(true);
           renderAll();
-          toast('Copia cargada correctamente', 'ok');
+          toast('Copia cargada como versión actual', 'ok');
         } catch (err) {
           console.warn('[App] Intento de importar archivo inválido:', err.message);
           toast('Ese archivo no es una copia válida', 'err');
@@ -1047,7 +1345,7 @@
       e.target.value = '';
     };
 
-    $('#btnListBk').onclick = listBackups;
+    $('#btnListBk').onclick = () => listBackups(false);
     $('#btnPDF').onclick = genPDF;
     $('#btnXLSX').onclick = genXLSX;
     $('#btnPrint').onclick = () => window.print();
@@ -1063,10 +1361,12 @@
   if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
     document.addEventListener('DOMContentLoaded', async () => {
       await Store.load();
+      initDefaultDateInputs();
       const sel = $('#periodSelect');
       if (sel) sel.value = '30';
       applyTheme();
       init();
+      await listBackups(true);
       renderAll();
     });
   }

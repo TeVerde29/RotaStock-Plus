@@ -11,12 +11,44 @@
   const Store = {
     key: 'rotastockplus_db',
     db: null,
+    liveDb: null,
+    activeSnapshotName: null,
+
+    isReadOnly() {
+      return Boolean(this.activeSnapshotName);
+    },
+
+    previewSnapshot(dbObj, name = 'Copia histórica') {
+      if (!this.isValidStructure(dbObj)) return false;
+      if (!this.liveDb && this.db) {
+        this.liveDb = JSON.parse(JSON.stringify(this.db));
+      }
+      this.db = this.normalize(JSON.parse(JSON.stringify(dbObj)));
+      this.activeSnapshotName = String(name || 'Copia histórica');
+      return true;
+    },
+
+    exitSnapshot() {
+      if (this.liveDb) {
+        this.db = this.liveDb;
+      }
+      this.liveDb = null;
+      this.activeSnapshotName = null;
+      return true;
+    },
+
+    async restoreSnapshotAsLive() {
+      if (!this.isValidStructure(this.db)) return false;
+      this.liveDb = null;
+      this.activeSnapshotName = null;
+      return this.save();
+    },
 
     createDefaultDB() {
       return {
         meta: {
           sistema: 'RotaStock Plus',
-          versionEsquema: '2.0.0',
+          versionEsquema: '2.0.2',
           createdAt: new Date().toISOString(),
           totalProductos: 0,
           totalMovimientos: 0
@@ -63,6 +95,8 @@
     },
 
     async load() {
+      this.liveDb = null;
+      this.activeSnapshotName = null;
       if (typeof window !== 'undefined' && window.rotastock?.isElectron) {
         try {
           const raw = await window.rotastock.loadDB();
@@ -111,6 +145,10 @@
     },
 
     async save() {
+      if (this.isReadOnly()) {
+        console.warn('[Store] Guardado bloqueado: el sistema está en Modo Histórico (Solo lectura).');
+        return false;
+      }
       if (!this.isValidStructure(this.db)) {
         console.error('[Store] Intento de guardado cancelado: estructura de base de datos inválida.');
         return false;

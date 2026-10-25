@@ -51,6 +51,13 @@
       </div>
     </div>
     <div class="nav-right">
+      <label class="period-selector snapshot-selector" title="Cambiar entre base de datos actual o ver una copia histórica en modo lectura">
+        <span class="period-label" id="snapshotStatusBadge">Versión</span>
+        <select id="snapshotSelect" aria-label="Seleccionar versión o copia de seguridad">
+          <option value="__live__">🟢 Actual (En vivo)</option>
+        </select>
+      </label>
+      <input type="file" id="filePreview" accept=".json" hidden />
       <button id="btnTheme" class="theme-toggle" title="Cambiar modo claro/oscuro" aria-label="Cambiar entre modo claro y oscuro">
         <svg class="i i-sun"><use href="#i-sun"/></svg>
         <svg class="i i-moon"><use href="#i-moon"/></svg>
@@ -83,6 +90,17 @@
 
     <main class="content">
 
+      <div id="timeTravelBanner" class="time-travel-banner hidden" role="status" aria-live="polite">
+        <div class="tt-info">
+          <span class="badge warn">MODO HISTÓRICO · SOLO LECTURA</span>
+          <span id="timeTravelText">Estás viendo una copia antigua. Tus datos actuales no se modificarán.</span>
+        </div>
+        <div class="tt-actions">
+          <button id="btnRestoreSnapshot" class="btn btn-ghost">Restaurar esta copia como actual</button>
+          <button id="btnExitSnapshot" class="btn btn-primary">Volver a la versión actual</button>
+        </div>
+      </div>
+
       <section class="view" id="view-dashboard">
         <div id="alertBanner" class="alert-banner hidden">
           <span id="alertText"></span>
@@ -94,18 +112,21 @@
             <h1>Panel de control</h1>
             <p class="muted" id="periodCaption">Análisis del período seleccionado</p>
           </div>
-          <label class="period-selector">
-            <span class="period-label">Período</span>
-            <select id="periodSelect">
-              <option value="7">1 semana</option>
-              <option value="15">15 días</option>
-              <option value="30" selected>1 mes</option>
-              <option value="90">3 meses</option>
-              <option value="180">6 meses</option>
-              <option value="365">1 año</option>
-              <option value="all">Siempre</option>
-            </select>
-          </label>
+          <div class="period-controls">
+            <label class="period-selector">
+              <span class="period-label">Período</span>
+              <select id="periodSelect">
+                <option value="hoy">Hoy</option>
+                <option value="30" selected>Este mes (30 días)</option>
+                <option value="all">Siempre</option>
+                <option value="custom">Personalizado (Desde / Hasta)…</option>
+              </select>
+            </label>
+            <div id="dashCustomRange" class="custom-range hidden">
+              <label class="range-field"><span>Desde</span><input type="date" id="dashFrom" class="input" /></label>
+              <label class="range-field"><span>Hasta</span><input type="date" id="dashTo" class="input" /></label>
+            </div>
+          </div>
         </div>
 
         <div class="kpi-grid">
@@ -232,14 +253,14 @@
           </select>
           <select id="movPeriodo" class="input">
             <option value="hoy">Hoy</option>
-            <option value="7">Esta semana</option>
-            <option value="15">Últimos 15 días</option>
-            <option value="30">Último mes</option>
-            <option value="90">Últimos 3 meses</option>
-            <option value="180">Último medio año</option>
-            <option value="365">Último año</option>
+            <option value="30">Este mes (30 días)</option>
             <option value="siempre" selected>Siempre</option>
+            <option value="custom">Personalizado (Desde / Hasta)…</option>
           </select>
+          <div id="movCustomRange" class="custom-range hidden">
+            <label class="range-field"><span>Desde</span><input type="date" id="movFrom" class="input" /></label>
+            <label class="range-field"><span>Hasta</span><input type="date" id="movTo" class="input" /></label>
+          </div>
         </div>
         <div class="panel">
           <div class="table-wrap">
@@ -357,14 +378,18 @@
       </section>
 
       <section class="view hidden" id="view-respaldos">
-        <div class="view-head"><div><h1>Copias de seguridad</h1><p class="muted">Toda tu información en un solo archivo para llevarla a otra computadora</p></div></div>
+        <div class="view-head"><div><h1>Copias de seguridad</h1><p class="muted">Viaja en el tiempo para consultar copias de otros días sin perder tus datos actuales, o descarga un respaldo completo</p></div></div>
         <div class="panel narrow">
-          <div class="panel-head"><h3>Guardar / recuperar</h3></div>
-          <p class="muted">El sistema guarda una copia automática por día y borra las que tienen más de 30 días.</p>
+          <div class="panel-head"><h3>Guardar, explorar o recuperar</h3></div>
+          <p class="muted">El sistema genera una copia automática diaria (<code>inventario-AAAA-MM-DD.json</code>). Puedes <strong>abrir cualquier copia en modo lectura</strong> para revisar cómo estaba tu almacén ese día y luego volver a la versión actual con un clic.</p>
           <div class="imp-row">
-            <button class="btn btn-primary" id="btnExport"><svg class="i"><use href="#i-download"/></svg> Descargar copia completa</button>
-            <label class="btn btn-ghost" style="cursor:pointer"><svg class="i"><use href="#i-upload"/></svg> Cargar copia<input type="file" id="fileImport" accept=".json" hidden /></label>
-            <button class="btn btn-ghost" id="btnListBk">Ver copias automáticas</button>
+            <button class="btn btn-primary" id="btnExport"><svg class="i"><use href="#i-download"/></svg> Descargar copia actual</button>
+            <button class="btn btn-ghost" id="btnPreviewExternal"><svg class="i"><use href="#i-doc"/></svg> Ver archivo .json (Solo lectura)</button>
+            <label class="btn btn-ghost" style="cursor:pointer"><svg class="i"><use href="#i-upload"/></svg> Reemplazar con archivo .json<input type="file" id="fileImport" accept=".json" hidden /></label>
+          </div>
+          <div class="panel-head" style="margin-top:20px;margin-bottom:8px">
+            <h3>Copias automáticas en este equipo</h3>
+            <button class="btn btn-ghost" id="btnListBk" style="padding:5px 10px;font-size:.8rem">Actualizar lista</button>
           </div>
           <div class="bk-list" id="bkList"></div>
         </div>
@@ -379,15 +404,15 @@
               <span class="period-label">Período del informe</span>
               <select id="repPeriodo">
                 <option value="hoy">Hoy</option>
-                <option value="7">Esta semana</option>
-                <option value="15">Últimos 15 días</option>
-                <option value="30" selected>Último mes</option>
-                <option value="90">Últimos 3 meses</option>
-                <option value="180">Último medio año</option>
-                <option value="365">Último año</option>
+                <option value="30" selected>Este mes (30 días)</option>
                 <option value="siempre">Siempre</option>
+                <option value="custom">Personalizado (Desde / Hasta)…</option>
               </select>
             </label>
+            <div id="repCustomRange" class="custom-range hidden">
+              <label class="range-field"><span>Desde</span><input type="date" id="repFrom" class="input" /></label>
+              <label class="range-field"><span>Hasta</span><input type="date" id="repTo" class="input" /></label>
+            </div>
           </div>
           <ul class="export-sheets">
             <li><strong>Informe en PDF:</strong> resumen, detalle, gráficos, clasificación, compras y conteos.</li>

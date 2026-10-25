@@ -281,10 +281,109 @@ test('9. Mejoras #4, #7, #9, #10, #11, #14 y #15: Seguridad, Estado, Constantes,
   const updater = new AppUpdater();
   const upRes = await updater.checkForUpdates();
   assert.equal(upRes.available, false);
-  assert.equal(upRes.currentVersion, '2.0.0');
+  assert.equal(upRes.currentVersion, '2.0.2');
 
   // Mejora #15: Hook de firma de Windows funciona sin fallar cuando no hay certificado comercial
   await assert.doesNotReject(async () => {
     await signHook.default({ path: 'dist/RotaStockPlus.exe' });
   });
+});
+
+test('10. Rango de Fechas Personalizado ("Desde" y "Hasta"): Filtra y calcula capas FIFO exactamente en la ventana elegida', () => {
+  resetToEmptyDB();
+  Store.db.productos.push({
+    id: 'p_rng',
+    nombre: 'Router Industrial',
+    costoUnitario: 100,
+    leadTime: 7,
+    desviacionLeadTime: 1,
+    nivelServicioZ: 1.65,
+    creadoEn: '2026-01-01T00:00:00.000Z'
+  });
+
+  // Compra el 05 de enero: 20 uds @ $100
+  Store.db.movimientos.push({
+    id: 'm_r1',
+    timestamp: '2026-01-05T12:00:00.000Z',
+    tipo: 'compra',
+    productoId: 'p_rng',
+    cantidad: 20,
+    costoUnitario: 100
+  });
+  // Venta el 15 de enero (dentro de la ventana 10-20 ene): 5 uds @ $160
+  Store.db.movimientos.push({
+    id: 'm_r2',
+    timestamp: '2026-01-15T12:00:00.000Z',
+    tipo: 'venta',
+    productoId: 'p_rng',
+    cantidad: 5,
+    costoUnitario: 160
+  });
+  // Venta el 28 de enero (fuera de la ventana 10-20 ene): 8 uds @ $160
+  Store.db.movimientos.push({
+    id: 'm_r3',
+    timestamp: '2026-01-28T12:00:00.000Z',
+    tipo: 'venta',
+    productoId: 'p_rng',
+    cantidad: 8,
+    costoUnitario: 160
+  });
+
+  const cCustom = Engine.compute({ start: '2026-01-10', end: '2026-01-20' });
+  const r = cCustom.rows[0];
+
+  // Al corte del 20 de enero solo ocurrió la venta de 5 uds (quedan 15 uds en stock a esa fecha)
+  assert.equal(r.salidasPer, 5);
+  assert.equal(r.cogs, 500);
+  assert.equal(r.ingresos, 800);
+  assert.equal(r.stockActual, 15);
+
+  // Si el usuario invierte accidentalmente Desde y Hasta, Engine.range los ordena automáticamente
+  const cInverted = Engine.compute({ start: '2026-01-20', end: '2026-01-10' });
+  assert.equal(cInverted.rows[0].salidasPer, 5);
+  assert.equal(cInverted.rows[0].stockActual, 15);
+});
+
+test('11. Modo Viaje en el Tiempo (Copias en Solo Lectura): Previsualiza copias sin sobrescribir la base actual', async () => {
+  resetToEmptyDB();
+  Store.db.productos.push({
+    id: 'p_live',
+    nombre: 'Producto Actual En Vivo',
+    costoUnitario: 50,
+    leadTime: 7,
+    desviacionLeadTime: 1,
+    nivelServicioZ: 1.65,
+    creadoEn: '2026-03-01T00:00:00.000Z'
+  });
+
+  const backupPasado = Store.createDefaultDB();
+  backupPasado.productos.push({
+    id: 'p_old',
+    nombre: 'Producto Histórico Septiembre',
+    costoUnitario: 30,
+    leadTime: 5,
+    desviacionLeadTime: 1,
+    nivelServicioZ: 1.28,
+    creadoEn: '2026-09-28T00:00:00.000Z'
+  });
+
+  assert.equal(Store.isReadOnly(), false);
+
+  // Entrar en Modo Viaje en el Tiempo
+  const ok = Store.previewSnapshot(backupPasado, 'inventario-2026-09-28.json');
+  assert.equal(ok, true);
+  assert.equal(Store.isReadOnly(), true);
+  assert.equal(Store.activeSnapshotName, 'inventario-2026-09-28.json');
+  assert.equal(Store.db.productos[0].id, 'p_old');
+
+  // Mientras está en modo lectura, Store.save() debe bloquear cualquier escritura en disco
+  const saveAttempt = await Store.save();
+  assert.equal(saveAttempt, false);
+
+  // Al salir del Modo Viaje en el Tiempo, vuelve intacta la base de datos en vivo
+  Store.exitSnapshot();
+  assert.equal(Store.isReadOnly(), false);
+  assert.equal(Store.activeSnapshotName, null);
+  assert.equal(Store.db.productos.length, 1);
+  assert.equal(Store.db.productos[0].id, 'p_live');
 });
