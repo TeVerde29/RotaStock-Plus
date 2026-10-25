@@ -41,26 +41,6 @@ function ensureFiles() {
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   if (!fs.existsSync(backupDir())) fs.mkdirSync(backupDir(), { recursive: true });
 
-  // Si existen copias históricas semilla en el proyecto, copiarlas si aún no están en backups del usuario
-  const seedBackupsDir = path.join(__dirname, 'backups');
-  if (fs.existsSync(seedBackupsDir)) {
-    try {
-      for (const f of fs.readdirSync(seedBackupsDir)) {
-        if (!f.endsWith('.json')) continue;
-        const dst = path.join(backupDir(), f);
-        if (!fs.existsSync(dst)) {
-          const src = path.join(seedBackupsDir, f);
-          const raw = fs.readFileSync(src, 'utf8');
-          if (parseAndValidateDB(raw).valid) {
-            writeFileAtomicSync(dst, raw);
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[Main] No se pudieron copiar respaldos iniciales:', err.message);
-    }
-  }
-
   if (!fs.existsSync(dbPath())) {
     // Primera vez: trae la semilla del proyecto si existe, si no arranca con defaultDB
     const semilla = path.join(__dirname, 'datos', 'inventario.json');
