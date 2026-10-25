@@ -3,15 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self';" />
   <meta name="color-scheme" content="dark light" />
   <title>RotaStock Plus — Control de Inventario</title>
-  <script>
-    (function () {
-      var t = 'dark';
-      try { var s = localStorage.getItem('rotastock_theme'); if (s === 'light' || s === 'dark') t = s; } catch (e) {}
-      document.documentElement.setAttribute('data-theme', t);
-    })();
-  </script>
+  <script src="theme-init.js"></script>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/png" href="assets/icon.png" />
 </head>
@@ -425,6 +420,10 @@
   <script src="assets/vendor/xlsx.full.min.js"></script>
   <script src="assets/vendor/jspdf.umd.min.js"></script>
   <script src="assets/vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="constants.js"></script>
+  <script src="store.js"></script>
+  <script src="engine.js"></script>
+  <script src="reports.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

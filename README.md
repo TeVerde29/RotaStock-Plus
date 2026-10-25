@@ -1,13 +1,14 @@
-# RotaStock Plus — Control de Inventario con FIFO
+# RotaStock Plus — Control de Inventario FIFO y Gestión de Almacén
 
-> Aplicación de escritorio para Windows (Electron) para registrar compras y ventas, valorar el inventario con FIFO (PEPS), clasificar productos con ABC heurístico, planificar compras, auditar el almacén con conteos físicos y generar informes ejecutivos en PDF y Excel — todo 100% offline con un único archivo JSON de estado.
+> Aplicación de escritorio para Windows basada en Electron para el control de inventario valorado mediante el método FIFO estricto (PEPS), clasificación ABC/XYZ, planificación de compras, auditoría física y reportes ejecutivos en PDF y Excel, 100% offline con doble persistencia atómica en JSON y SQLite.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Activo-0f9488?style=for-the-badge" alt="Estado: activo">
-  <img src="https://img.shields.io/badge/JavaScript-Vanilla-f5b942?style=for-the-badge&logo=javascript&logoColor=111827" alt="JavaScript Vanilla">
+  <img src="https://img.shields.io/badge/JavaScript-Vanilla_Modular-f5b942?style=for-the-badge&logo=javascript&logoColor=111827" alt="JavaScript Vanilla Modular">
   <img src="https://img.shields.io/badge/Escritorio-Electron_30-47848F?style=for-the-badge&logo=electron&logoColor=ffffff" alt="Electron 30">
+  <img src="https://img.shields.io/badge/Persistencia-JSON_+_SQLite_WAL-0284c7?style=for-the-badge&logo=sqlite&logoColor=ffffff" alt="JSON y SQLite">
   <img src="https://img.shields.io/badge/Costeo-FIFO_(PEPS)-2563eb?style=for-the-badge" alt="FIFO / PEPS">
-  <img src="https://img.shields.io/badge/Tipo-Instalador_+_Portable-334155?style=for-the-badge" alt="Instalador y portable">
+  <img src="https://img.shields.io/badge/Plataforma-Windows_x64-0078d4?style=for-the-badge&logo=windows&logoColor=ffffff" alt="Windows x64">
   <img src="https://img.shields.io/badge/Licencia-MIT-64748b?style=for-the-badge" alt="Licencia MIT">
 </p>
 
@@ -20,20 +21,24 @@
   <img src="./img/conteos-almacen.png" alt="Conteos de almacén de RotaStock Plus" width="49%">
 </p>
 
+El encargado de compras o administrador del almacén registra las órdenes de compra y los despachos diarios; el sistema recalcula en tiempo real el valor remanente de cada lote y la rotación financiera. Paralelamente, los auditores de almacén efectúan conteos cíclicos contrastando el inventario físico contra el sistema, generando de forma automática los asientos de ajuste por faltantes o sobrantes.
+
 ---
 
 ## Tabla de contenidos
 
 - [Descripción](#descripción)
 - [Módulos del sistema](#módulos-del-sistema)
+- [Descarga y distribución](#descarga-y-distribución)
 - [Características principales](#características-principales)
 - [Stack tecnológico](#stack-tecnológico)
 - [Arquitectura](#arquitectura)
+- [Canales de comunicación IPC](#canales-de-comunicación-ipc)
 - [Motor FIFO y clasificación ABC](#motor-fifo-y-clasificación-abc)
-- [Descarga](#descarga)
 - [Instalación y uso](#instalación-y-uso)
 - [Requisitos del sistema](#requisitos-del-sistema)
-- [Persistencia y copias de seguridad](#persistencia-y-copias-de-seguridad)
+- [Persistencia, integridad y copias de seguridad](#persistencia-integridad-y-copias-de-seguridad)
+- [Verificación y pruebas automatizadas](#verificación-y-pruebas-automatizadas)
 - [Buenas prácticas de uso](#buenas-prácticas-de-uso)
 - [Roadmap](#roadmap)
 - [Licencia](#licencia)
@@ -43,56 +48,67 @@
 
 ## Descripción
 
-**RotaStock Plus** es la evolución del RotaStock original: conserva intacto su motor de replay FIFO verificado y lo extiende a **9 módulos** que cubren el ciclo completo del almacén — del registro de movimientos a la planificación de compras, la auditoría física y los informes ejecutivos.
+En almacenes comerciales y de suministros, un mismo artículo suele adquirirse a precios unitarios fluctuantes debido a inflación, variación cambiaria, promociones por volumen o cambio de proveedor. Los sistemas tradicionales de costo promedio ponderado ocultan el margen real de cada venta y complican el control fiscal de existencias.
 
-Como en el original, el sistema **no almacena indicadores precalculados como fuente de verdad**. Cualquier alta, edición o baja dispara un *replay* completo: stock, COGS de cada venta, alertas, clasificación y sugerencias se recalculan desde la bitácora. Todo el estado vive en **un único JSON global** (`inventario_completo`), portable 1:1 entre PCs.
+**RotaStock Plus** resuelve esta problemática implementando un modelo estricto de **Primeras Entradas, Primeras Salidas (FIFO / PEPS)** con seguimiento individual de capas de inventario. El operador registra únicamente la cantidad y el precio de venta al cliente; el motor desglosa automáticamente el costo de los bienes vendidos (COGS) consumiendo las unidades disponibles de los lotes más antiguos.
+
+El sistema se diseñó bajo el principio de **Event Sourcing simplificado**: no almacena saldos ni indicadores financieros precalculados como fuente de verdad. El stock actual, los días de cobertura, la semaforización por inactividad y los pronósticos de reabastecimiento se reconstruyen mediante un *replay* determinista de toda la bitácora histórica. La información se almacena con doble persistencia: un archivo JSON principal con escritura atómica para máxima portabilidad, acompañado por un espejo relacional SQLite transaccional (modo WAL) optimizado para grandes volúmenes de transacciones.
 
 ---
 
 ## Módulos del sistema
 
-| # | Módulo | Qué hace |
+| # | Módulo | Función operativa |
 |---|---|---|
-| 01 | Panel de control | 5 KPIs, gráficos de ingresos vs. COGS, salud del inventario y detalle por producto, con período configurable |
-| 02 | Productos | Catálogo CRUD con stock, rotación, cobertura y estado por tarjeta |
-| 03 | Clasificación ABC | Grupos A/B/C por asignador heurístico + estabilidad de ventas (XYZ) y curva de Pareto |
-| 04 | Movimientos | Bitácora de compras/ventas con buscador, filtros por tipo y por período |
-| 05 | Qué comprar | Sugerencias de compra (cantidad y nivel de pedido) según ventas y tiempos de entrega |
-| 06 | Conteos de almacén | Conteos físicos con ajustes automáticos, edición, reversión y exactitud (IRA) |
-| 07 | Configuración | Umbrales de semaforización y datos del negocio |
-| 08 | Copias de seguridad | Exportación/importación del JSON único + copias automáticas diarias |
-| 09 | Informes | PDF ejecutivo de 6 secciones y Excel de 4 hojas con fórmulas vivas, por período elegible |
+| 01 | Panel de control | 5 tarjetas KPI (Días de inventario, COGS, Ingresos, Ganancia bruta, Alertas), gráficos interactivos (Ingresos vs. COGS y Dona de salud) y tabla paginada con selector de período (7, 15, 30, 90, 180, 365 días o Siempre). |
+| 02 | Productos | Catálogo general de artículos con métricas individuales por tarjeta, buscador en tiempo real, filtro por estado de rotación y ordenamiento configurable. |
+| 03 | Clasificación ABC / XYZ | Clasificación de Pareto con asignador heurístico por proximidad a los umbrales 80/95 (con desempate por promoción a la clase superior), análisis de estabilidad mensual por coeficiente de variación (XYZ) y frecuencias de revisión sugeridas. |
+| 04 | Movimientos | Bitácora cronológica de entradas (compras y ajustes excedentes) y salidas (ventas y ajustes por faltante) con control estricto que impide registrar salidas superiores al stock disponible. |
+| 05 | Qué comprar | Modelo de reabastecimiento basado en suavizado exponencial ($\alpha = 0.3$), desviación diaria de demanda, stock de seguridad con factor $Z$ y punto de reorden para sugerir cantidades de pedido exactas. |
+| 06 | Conteos de almacén | Auditorías físicas periódicas con cálculo de discrepancia ($d = \text{físico} - \text{sistema}$), generación automática de movimientos de ajuste al costo promedio ponderado de capas vivas, reversión íntegra e índice de exactitud de registros de inventario (IRA %). |
+| 07 | Configuración | Parametrización de los límites de días para la semaforización de inactividad (Sana, Lenta, Muy Lenta, Dormido) y personalización del nombre comercial de la empresa. |
+| 08 | Copias de seguridad | Exportación e importación manual del archivo JSON íntegro del sistema, junto con el explorador de copias automáticas diarias retenidas a 30 días. |
+| 09 | Informes | Generación en el cliente de libros de cálculo Excel (`.xlsx`) de 4 hojas con fórmulas vivas de celda y reportes ejecutivos en PDF vectorial (`.pdf`) de 6 secciones con gráficos de alta resolución. |
+
+---
+
+## Descarga y distribución
+
+| Paquete | Plataforma | Descripción | Enlace |
+|---|---|---|---|
+| Instalador oficial NSIS | Windows 10/11 (x64) | Asistente de instalación estándar con accesos directos y desinstalador | [Releases de RotaStock Plus](https://github.com/TeVerde29/RotaStock-Plus/releases/latest) |
+| Ejecutable portable | Windows 10/11 (x64) | Binario autónomo sin instalación (`RotaStockPlus.exe`) | [Releases de RotaStock Plus](https://github.com/TeVerde29/RotaStock-Plus/releases/latest) |
 
 ---
 
 ## Características principales
 
-- **Motor de replay FIFO estricto (PEPS)** heredado y verificado del RotaStock original: cada venta consume el lote más antiguo; costeo no editable.
-- **Clasificación ABC por proximidad**: asignador heurístico con tolerancia al error (sin cortes rígidos), más estabilidad XYZ y frecuencia de conteo sugerida.
-- **Plan de compras**: pronóstico de ventas, reserva de seguridad y punto de pedido por producto, con alertas de compra.
-- **Conteos auditables**: el físico vs. sistema genera el ajuste solo; cada conteo se puede editar o revertir como si nunca hubiera existido.
-- **Semaforización por inactividad** (Sana / Lenta / Muy Lenta / Dormido) con umbrales configurables.
-- **Informes elaborados**: PDF con portada, KPIs, tablas y gráficos; Excel con capas FIFO, ABC, plan de compras y resumen.
-- **Seguro por diseño**: `contextIsolation` activo y `nodeIntegration` desactivado; el renderer solo usa un puente IPC (`db:load` / `db:save`).
-- **100% offline**: sin conexión, sin backend, sin base de datos externa. Librerías vendorizadas (sin CDN).
-- **Tema claro/oscuro** persistido y aplicado antes del primer pintado.
-- **Modo navegador**: el frontend también corre fuera de Electron usando `localStorage`.
+- **Motor de replay FIFO estricto:** Reconstruye la cola de lotes en cada cálculo. Si un producto cuenta con capas a diferentes precios, la venta liquida primero el lote más antiguo y continúa con los siguientes sin promedios artificiales.
+- **Doble persistencia atómica (JSON + SQLite WAL):** Las operaciones de guardado se escriben primero en archivos temporales con volcado físico `fsync` antes de renombrar, y se sincronizan dentro de una transacción ACID (`BEGIN IMMEDIATE ... COMMIT`) en `inventario.sqlite`.
+- **Clasificación ABC heurística por proximidad:** Evita saltos rígidos en las fronteras del 80% y 95%. Si la distancia porcentual al umbral es simétrica, promueve el producto a la categoría de mayor prioridad.
+- **Análisis de estabilidad XYZ:** Calcula el coeficiente de variación poblacional sobre la demanda agrupada por mes calendario para categorizar artículos en estables (X), variables (Y) e irregulares (Z).
+- **Modelo de punto de reorden dinámico:** Determina el stock de seguridad considerando la variabilidad conjunta de la demanda y el tiempo de entrega del proveedor (`leadTime`).
+- **Conteos físicos integrados:** Las auditorías reconcilian el almacén insertando movimientos de venta (faltantes) o compra (sobrantes) valorados al costo real de capas vivas, permitiendo editar o revertir cualquier conteo sin dejar desalineaciones en la bitácora.
+- **Seguridad en Electron:** Confinamiento mediante `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` y una política de seguridad de contenido (`Content-Security-Policy`) estricta sin scripts inline.
+- **Renderizado perezoso (Lazy Rendering):** El cálculo de indicadores se realiza de forma centralizada pero el renderizado visual en el DOM solo procesa la pestaña visible en pantalla, acelerando la navegación.
+- **Operación 100% offline:** Todas las librerías gráficas y de exportación se encuentran empaquetadas localmente (`frontend/assets/vendor/`). No requiere conexión a internet para funcionar.
 
 ---
 
 ## Stack tecnológico
 
-| Capa | Tecnología | Función |
-|---|---|---|
-| Escritorio | Electron 30 + electron-builder | Ventana nativa, instalador NSIS y portable |
-| IPC | `preload.js` + `contextBridge` | Puente seguro de carga y guardado (JSON) |
-| Presentación | HTML5 + CSS3 (claro/oscuro) | SPA de nueve vistas |
-| Motor de negocio | JavaScript Vanilla (`Engine`) | Replay FIFO, ABC heurístico, pronósticos, métricas |
-| Visualización | Chart.js 4 (vendorizado) | Barras, dona y Pareto (también incrustados en el PDF) |
-| Exportación | SheetJS + jsPDF + autotable (vendorizados) | Excel de 4 hojas y PDF de 6 secciones, sin servidor |
-| Persistencia | JSON único + `backups/` | Fuente de verdad local, offline |
-
-Sin frameworks ni bundlers. `Engine` (en `frontend/app.js`) encapsula replay FIFO, clasificación, reabastecimiento y métricas.
+| Capa | Tecnología | Versión | Función en el sistema |
+|---|---|---|---|
+| Entorno de escritorio | Electron | 30.5.1 | Proceso principal, gestión de ventanas y ciclo de vida en Windows |
+| Empaquetador | electron-builder | 24.13.3 | Generación del instalador NSIS y versión portable x64 |
+| Puente IPC | Electron contextBridge | 30.5.1 | Aislamiento de contexto seguro entre `main.js` y el renderer |
+| Persistencia primaria | JSON (escritura atómica) | Estándar JSON | Almacenamiento portátil y fuente de exportación |
+| Persistencia secundaria | SQLite (modo WAL) | Node.js nativo | Espejo transaccional indexado para consultas de alto volumen |
+| Frontend | HTML5 / CSS3 / JavaScript | ES2022 | Interfaz modular en cliente sin frameworks pesados |
+| Gráficos interactivos | Chart.js | 4.4.0 (UMD) | Gráficos de barras, dona de rotación y curva de Pareto |
+| Generación de hojas de cálculo | SheetJS (xlsx) | 0.18.5 (Full) | Libro Excel con fórmulas dinámicas (`SUM`, productos de celda) |
+| Generación de documentos PDF | jsPDF + AutoTable | 2.5.1 / 3.5.31 | Maquetación vectorial A4 de informes ejecutivos |
+| Entorno de pruebas | Node.js Test Runner | 22.x nativo | Suite automatizada de pruebas unitarias y de integración |
 
 ---
 
@@ -100,121 +116,190 @@ Sin frameworks ni bundlers. `Engine` (en `frontend/app.js`) encapsula replay FIF
 
 ```
 RotaStock-Plus/
- ├── main.js              # Proceso principal: rutas Roaming, IPC, backups diarios, ventana
- ├── preload.js           # Puente IPC seguro: isElectron, loadDB, saveDB, backups
- ├── package.json         # Build nsis + portable
- ├── build/icon.ico       # Icono del exe e instalador (logo del sistema)
+ ├── main.js                      # Proceso principal: IPC, ventanas, copias y arranque
+ ├── preload.js                   # Exposición segura en window.rotastock mediante contextBridge
+ ├── package.json                 # Metadatos, dependencias, scripts y configuración de build
+ ├── funcionalidades.md           # Especificación matemática exhaustiva y manual de replicación
+ ├── build/
+ │    ├── icon.ico                # Ícono oficial del ejecutable de Windows e instalador
+ │    └── icon.png                # Ícono en alta resolución para accesos directos
+ ├── src/
+ │    ├── validator.js            # Validación de esquema JSON y reglas de negocio
+ │    ├── atomic-fs.js            # Escritura atómica a disco con fsync y rename
+ │    ├── sqlite-store.js         # Espejo transaccional SQLite con índices relacionales
+ │    └── updater.js              # Controlador de actualizaciones automáticas con fallback offline
+ ├── scripts/
+ │    └── sign-windows.js         # Hook de firma digital Authenticode con signtool
  ├── frontend/
- │    ├── index.html      # SPA de 9 vistas
- │    ├── style.css       # Paleta grafito cálido / papel + azul petróleo + arcilla
- │    ├── app.js          # Engine + render de los 9 módulos
+ │    ├── index.html              # Estructura de la aplicación de una sola página (SPA)
+ │    ├── style.css               # Sistema de diseño con variables para temas oscuro y claro
+ │    ├── theme-init.js           # Inicialización inmediata de tema antes del primer render
+ │    ├── constants.js            # Constantes de dominio, formatos numéricos y utilidades
+ │    ├── store.js                # Cascada híbrida de persistencia (Electron, localStorage, fetch)
+ │    ├── engine.js               # Motor matemático FIFO, ABC, XYZ y Reabastecimiento
+ │    ├── reports.js              # Generador de libros Excel y reportes PDF
+ │    ├── app.js                  # Controlador de interfaz, estado global y navegación
  │    └── assets/
- │         ├── icon.png
- │         └── vendor/    # chart.umd, xlsx.full, jspdf.umd, autotable (offline)
+ │         ├── icon.png           # Logotipo de la aplicación
+ │         └── vendor/            # Chart.js, SheetJS, jsPDF y AutoTable locales
+ ├── tests/
+ │    └── funcionalidades.test.js # Suite de pruebas automatizadas contra funcionalidades.md
  ├── datos/
- │    └── inventario.json # Estado en desarrollo (ignorado por git)
- └── backups/             # Copias automáticas (ignorado por git)
+ │    └── inventario.json         # Semilla inicial de datos para primera ejecución
+ └── backups/                     # Carpeta de copias de seguridad automáticas diarias
 ```
 
-Instalado, los datos viven en `C:\Users\<usuario>\AppData\Roaming\RotaStockPlus\` (creada sola al primer arranque). En desarrollo se usa la carpeta del proyecto. El frontend empaquetado se sirve desde el `app.asar` (solo lectura).
+### Decisiones arquitectónicas fundamentales
+
+- **Persistencia en Roaming:** En modo instalado, los datos no se guardan en la carpeta de instalación (donde Windows requiere permisos elevados), sino en el directorio de perfil del usuario: `C:\Users\<usuario>\AppData\Roaming\RotaStockPlus\`.
+- **Escritura a prueba de fallos:** La función `writeFileAtomicSync` escribe primero en un archivo temporal con sufijo de proceso y marca de tiempo; tras validar el cierre del descriptor y sincronizar con el disco, ejecuta un reemplazo atómico que evita archivos corruptos ante cortes de energía.
+- **Aislamiento en módulos auto-ejecutables:** Los archivos de lógica del frontend (`constants.js`, `store.js`, `engine.js`, `reports.js`, `app.js`) están encapsulados en funciones auto-ejecutables (IIFE) que exportan selectivamente sus interfaces a `globalThis` y a `module.exports`, permitiendo ejecutar pruebas nativas con Node.js sin alterar la ejecución en el navegador.
+
+---
+
+## Canales de comunicación IPC
+
+El proceso de renderizado interactúa con el proceso principal de Electron exclusivamente a través de los métodos expuestos en `window.rotastock`:
+
+```javascript
+// Métodos disponibles en el objeto seguro window.rotastock
+window.rotastock.loadDB();              // Invoca canal 'db:load' para leer inventario.json
+window.rotastock.saveDB(jsonText);       // Invoca canal 'db:save' (valida y guarda de forma atómica)
+window.rotastock.listBackups();          // Invoca canal 'db:listBackups' (lista copias diarias)
+window.rotastock.readBackup(fileName);   // Invoca canal 'db:readBackup' (lee copia sanitizada)
+window.rotastock.sqliteStatus();         // Invoca canal 'db:sqliteStatus' (diagnóstico SQLite)
+window.rotastock.checkForUpdates();      // Invoca canal 'app:checkForUpdates' (consulta de versiones)
+```
 
 ---
 
 ## Motor FIFO y clasificación ABC
 
-El núcleo es el replay cronológico verificado del RotaStock original: los movimientos se ordenan por fecha, se recorren uno a uno y se mantiene por producto una cola de lotes `{ remaining, costo, fecha }`. **Compra** agrega lote; **venta** consume desde el más antiguo (`COGS = Σ take·costo`). De ahí salen rotación (`COGS / inventario promedio`), cobertura, días de inventario y días sin movimiento.
+### Dinámica de capas FIFO multi-precio
 
-La **clasificación ABC** no usa cortes rígidos 80/95: el asignador heurístico por proximidad compara, al cruzar cada umbral, qué tan cerca queda el acumulado incluyendo vs. excluyendo el producto (el empate promueve). La **estabilidad XYZ** mide qué tan parejas son las ventas mes a mes (Estable / Variable / Irregular) y define cada cuánto contar cada grupo (A: 30 días, B: 60, C: 120).
+Cuando se procesa una venta, el motor toma las unidades del lote de compra más antiguo en la cola del producto. Si la transacción supera la cantidad disponible en dicho lote, agota la capa con su costo unitario original y consume el remanente del lote subsiguiente:
 
-> La memoria descriptiva completa del proyecto está disponible en [`docs/Memoria_Descriptiva_RotaStock_Plus.pdf`](./docs/Memoria_Descriptiva_RotaStock_Plus.pdf).
+$$\text{COGS}_{\text{venta}} = \sum_{i} \left( \text{unidades\_tomadas}_i \times \text{costo\_unitario}_i \right)$$
 
----
+$$\text{Ingreso}_{\text{venta}} = \text{cantidad\_vendida} \times \text{precio\_venta}$$
 
-## Descarga
+$$\text{Ganancia\_bruta} = \text{Ingreso}_{\text{venta}} - \text{COGS}_{\text{venta}}$$
 
-Última versión publicada (instalador para Windows):
+### Asignador heurístico por proximidad
 
-- [Releases de RotaStock Plus](https://github.com/TeVerde29/RotaStock-Plus/releases/latest)
+A diferencia de los cortes rígidos tradicionales en los percentiles 80% y 95%, RotaStock Plus compara la distancia absoluta al umbral antes y después de incluir el producto $i$:
 
-> Si el nombre del repositorio es otro, ajusta el enlace.
+$$\text{decide}(\text{antes}, \text{después}, \text{umbral}) = \begin{cases} 0 \quad (\text{permanece en clase superior}) & \text{si } (\text{después} - \text{umbral}) \le (\text{umbral} - \text{antes}) \\ 1 \quad (\text{pasa a clase siguiente}) & \text{si } (\text{después} - \text{umbral}) > (\text{umbral} - \text{antes}) \end{cases}$$
+
+El operador $\le$ asegura que en caso de empate exacto de distancias, el producto se clasifique en la categoría de mayor criticidad (A o B).
 
 ---
 
 ## Instalación y uso
 
-### Para usuarios: instalador
+### Requisitos previos
 
-1. Descarga `RotaStockPlus Setup 2.0.0.exe` desde Releases.
-2. Instálalo (puedes elegir la carpeta) — crea acceso directo en escritorio e inicio.
-3. Tus datos se guardan automáticamente en tu PC (`AppData\Roaming\RotaStockPlus`).
+- Node.js LTS (versión 20 o superior).
+- Gestor de paquetes `npm`.
 
-### Para desarrolladores
+### Procedimiento para desarrollo
 
-```bash
-# Clonar
-git clone https://github.com/TeVerde29/RotaStock-Plus.git
-cd RotaStock-Plus
+1. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/TeVerde29/RotaStock-Plus.git
+   cd RotaStock-Plus
+   ```
 
-# Instalar y ejecutar
-npm install
-npm start
+2. **Instalar dependencias:**
+   ```bash
+   npm install
+   ```
 
-# Empaquetar (instalador + portable en dist\)
-npm run build
-```
+3. **Ejecutar pruebas unitarias y de verificación matemática:**
+   ```bash
+   npm test
+   ```
 
-### Flujo básico de uso
+4. **Iniciar en modo desarrollo:**
+   ```bash
+   npm start
+   ```
 
-1. **Registra productos** (con stock inicial opcional como primera compra).
-2. **Registra movimientos** de compra y venta.
-3. **Revisa el Panel**: KPIs, gráficos y alertas de productos dormidos.
-4. **Consulta Qué comprar** antes de pedir al proveedor.
-5. **Cuenta el almacén** periódicamente y ajusta diferencias.
-6. **Genera el Informe** (PDF o Excel) del período que necesites.
-7. **Descarga tu copia completa** antes de cambiar de PC.
+5. **Compilar instalador y binario portable:**
+   ```bash
+   npm run build
+   ```
+   Los archivos compilados se generarán en la carpeta `dist/`.
+
+### Flujo de trabajo operativo
+
+1. **Catálogo:** Crear los productos definiendo su nombre, tiempo de entrega del proveedor (`leadTime`) y margen de seguridad estadístico ($Z$). Si se especifica un stock inicial, el sistema generará automáticamente su primer movimiento de compra.
+2. **Movimientos:** Registrar las compras a sus costos unitarios reales y las ventas a sus respectivos precios de venta.
+3. **Monitoreo:** Consultar el Panel de Control para verificar el índice de rotación, los días de cobertura y los productos en estado dormido.
+4. **Reabastecimiento:** Revisar la vista *Qué comprar* para identificar artículos en alerta cuyo stock actual se encuentre igual o por debajo del punto de reorden.
+5. **Auditoría:** Realizar conteos periódicos en el almacén físico; el sistema registrará de forma automática las discrepancias sin romper la valoración de las capas FIFO.
+6. **Informes:** Emitir reportes en PDF o Excel según el período de evaluación deseado.
 
 ---
 
 ## Requisitos del sistema
 
-| Componente | Requisito mínimo |
-|---|---|
-| Procesador | Intel Core i3 o equivalente |
-| Memoria RAM | 4 GB (8 GB recomendados para el empaquetado Electron) |
-| Pantalla | 1024×640 px mínimo; diseño pensado para 1360×860 |
-| Sistema operativo | Windows 10 o superior |
-| Runtime de desarrollo | Node.js LTS (`npm install`, `npm start`, `npm run build`) |
-| Conectividad | Ninguna en operación. Internet solo para la instalación inicial de dependencias |
+| Componente | Requisito mínimo | Requisito recomendado |
+|---|---|---|
+| Procesador | Intel Core i3 / AMD Ryzen 3 (2.0 GHz) | Intel Core i5 / AMD Ryzen 5 o superior |
+| Memoria RAM | 4 GB | 8 GB o superior |
+| Almacenamiento libre | 250 MB | 500 MB (para histórico y respaldos) |
+| Pantalla | Resolución 1024 × 640 píxeles | Resolución 1360 × 860 píxeles o superior |
+| Sistema operativo | Windows 10 (x64) | Windows 11 (x64) |
+| Conectividad | Ninguna requerida durante la operación | Opcional para descarga de dependencias |
 
 ---
 
-## Persistencia y copias de seguridad
+## Persistencia, integridad y copias de seguridad
 
-- Fuente de verdad: un único JSON `{ meta, config, productos, movimientos, conteosCiclicos }`.
-- **Copia automática por día** (`inventario-YYYY-MM-DD.json`); las de más de 30 días se eliminan solas.
-- **Copia completa manual** (`inventario_completo_*.json`): la única vía para migrar/clonar el sistema a otra PC. El PDF y el Excel son solo lectura, no se importan (CSV eliminado).
-- Un fallo de lectura no bloquea el arranque: cae a una base por defecto.
-- En navegador (sin Electron), la persistencia usa `localStorage`.
+- **Ruta en Windows:** `%APPDATA%\RotaStockPlus\datos\inventario.json` y `inventario.sqlite`.
+- **Copias automáticas diarias:** En cada guardado, el proceso principal genera una instantánea diaria en `%APPDATA%\RotaStockPlus\backups\inventario-YYYY-MM-DD.json`.
+- **Política de retención:** Al iniciar la aplicación y tras cada copia diaria, se depuran automáticamente los respaldos que superen los 30 días de antigüedad.
+- **Exportación manual:** El módulo de copias permite descargar en cualquier momento el archivo `inventario_completo_YYYY-MM-DD.json` para transferir la base de datos entre terminales sin pérdida de información.
+
+---
+
+## Verificación y pruebas automatizadas
+
+El proyecto cuenta con una batería de pruebas unitarias que valida cada algoritmo e invariante definido en `funcionalidades.md`:
+
+```bash
+npm test
+```
+
+Salida de la verificación automatizada:
+- **Subtest 1:** Línea base matemática con semilla real (`totCogs = 159950`, `totIng = 260000`, `totGan = 100050`, `totVal = 40550`).
+- **Subtest 2:** Simulación multi-precio FIFO estricto (ejemplo numérico de la Sección 3.6).
+- **Subtest 3:** Heurística ABC por proximidad, regla de empate y estabilidad XYZ.
+- **Subtest 4:** Modelo de reabastecimiento (suavizado exponencial, cálculo de SS y PRO).
+- **Subtest 5:** Ajustes automáticos de conteo físico e integridad de capas FIFO.
+- **Subtest 6:** Generación de libro Excel con 4 hojas y fórmulas vivas de celda (`G6*D6`, `SUM`).
+- **Subtest 7:** Validador de esquema JSON y escritura atómica en disco.
+- **Subtest 8:** Persistencia relacional SQLite transaccional (sincronización y recuperación).
+- **Subtest 9:** Confinamiento de seguridad, políticas CSP, sanitización y actualización offline.
 
 ---
 
 ## Buenas prácticas de uso
 
-- Registra primero el producto y después sus movimientos — una venta sin stock se rechaza.
-- El COGS lo calcula el motor FIFO, no el operador: el "costo" de una venta es su precio.
-- Ajusta los umbrales según tu almacén: repuestos lentos necesitan rangos más holgados que consumo diario.
-- Elige el período según la pregunta: días para rupturas recientes, meses para rotación estructural, "Siempre" para el retrato completo.
-- Cuenta los productos A cada 30 días; son donde tienes más dinero.
-- No edites el JSON a mano: usa los módulos y apóyate en las copias automáticas.
+- **Evitar la edición directa de archivos:** No modifique manualmente los archivos `.json` ni `.sqlite` en el directorio de usuario; utilice siempre los módulos correspondientes dentro de la interfaz gráfica.
+- **Costeo asistido:** En los movimientos de salida (ventas), ingrese el precio cobrado al cliente. No intente calcular el costo de la mercancía de forma manual; el motor FIFO asignará el costo exacto a partir de las capas vivas.
+- **Umbrales adaptados:** Ajuste los umbrales de inactividad según la naturaleza de su catálogo; productos de alta rotación (alimentos o insumos de oficina) requieren límites más estrechos que artículos de baja rotación (maquinaria o repuestos industriales).
+- **Periodicidad en conteos:** Audite los productos de categoría A al menos cada 30 días, los de categoría B cada 60 días y los de categoría C cada 120 días.
 
 ---
 
 ## Roadmap
 
-- [ ] Importación del JSON con validación previa y vista de diferencias.
-- [ ] Alertas de stock mínimo por producto.
-- [ ] Multi-almacén.
-- [ ] Modo kiosco de solo consulta para mostrador.
+- [ ] Soporte para lectura e impresión directa de etiquetas con código de barras y QR.
+- [ ] Módulo multi-almacén con transferencias entre depósitos.
+- [ ] Vista de auditoría detallada con comparación de cambios antes de restaurar respaldos.
+- [ ] Sincronización opcional cifrada punto a punto en red local.
 
 ---
 
@@ -226,7 +311,7 @@ Este proyecto se distribuye bajo la licencia **MIT**. Consulta el archivo [`LICE
 
 ## Autor
 
-**Pedro Giovanni Ricra Figueroa**
+**Pedro Giovanni Ricra Figueroa**  
 Estudiante de Ingeniería de Sistemas — Universidad Nacional de Ucayali
 
 - GitHub: [@TeVerde29](https://github.com/TeVerde29)
