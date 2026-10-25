@@ -916,30 +916,33 @@
       const currentSnap = Store.activeSnapshotName;
       const isExt = currentSnap && !l.includes(currentSnap);
       sel.innerHTML =
-        `<option value="__live__">🟢 Versión actual (En vivo)</option>` +
-        (isExt ? `<option value="__ext__" selected>📂 ${esc(currentSnap)} (Solo lectura)</option>` : '') +
+        `<option value="__live__">Actual (En vivo)</option>` +
+        (isExt ? `<option value="__ext__" selected>${esc(currentSnap)} (Solo lectura)</option>` : '') +
         l
           .slice(0, 30)
           .map(
             n =>
-              `<option value="${esc(n)}" ${currentSnap === n ? 'selected' : ''}>🕒 ${esc(n)} (Solo lectura)</option>`
+              `<option value="${esc(n)}" ${currentSnap === n ? 'selected' : ''}>${esc(n)} (Solo lectura)</option>`
           )
           .join('') +
-        `<option value="__open_file__">📂 Abrir otro archivo .json en modo lectura…</option>`;
+        `<option value="__open_file__">Abrir otro archivo .json en modo lectura…</option>`;
       if (!currentSnap) sel.value = '__live__';
     }
 
     if (!bkContainer) return;
 
     const liveRow = `<div class="bk-row ${!Store.isReadOnly() ? 'active-bk' : ''}">
-      <div>
-        <strong>🟢 Base de datos actual (En vivo)</strong>
-        <div class="muted" style="margin-top:2px;font-size:.8rem">Tus datos de trabajo del día de hoy</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg class="i" style="color:var(--sana)"><use href="#i-box"/></svg>
+        <div>
+          <strong>Base de datos actual (En vivo)</strong>
+          <div class="muted" style="margin-top:2px;font-size:.8rem">Tus datos de trabajo del día de hoy</div>
+        </div>
       </div>
       <div class="bk-row-actions">
         ${
           Store.isReadOnly()
-            ? `<button class="btn btn-primary" id="btnBkReturnLive" style="padding:5px 12px">Volver a versión actual</button>`
+            ? `<button class="btn btn-primary" id="btnBkReturnLive" style="padding:5px 12px"><svg class="i"><use href="#i-swap"/></svg> Volver a versión actual</button>`
             : `<span class="badge abc">Activa ahora</span>`
         }
       </div>
@@ -950,9 +953,12 @@
       .map(n => {
         const isCurrent = Store.activeSnapshotName === n;
         return `<div class="bk-row ${isCurrent ? 'active-bk' : ''}">
-          <div>
-            <span class="mono"><strong>${esc(n)}</strong></span>
-            ${isCurrent ? `<span class="badge warn" style="margin-left:6px">Viendo en pantalla</span>` : ''}
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg class="i" style="color:var(--muted-2)"><use href="#i-archive"/></svg>
+            <div>
+              <span class="mono"><strong>${esc(n)}</strong></span>
+              ${isCurrent ? `<span class="badge warn" style="margin-left:6px">Viendo en pantalla</span>` : ''}
+            </div>
           </div>
           <div class="bk-row-actions">
             <button class="btn ${isCurrent ? 'btn-primary' : 'btn-ghost'}" data-preview-bk="${esc(n)}" style="padding:5px 10px">

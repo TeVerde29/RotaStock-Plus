@@ -415,9 +415,11 @@ textarea.input{resize:vertical;min-height:64px}
 .range-field .input{padding:4px 8px;font-size:.84rem;height:30px}
 
 /* ---------- Modo Viaje en el Tiempo (Copias Históricas / Solo Lectura) ---------- */
-.snapshot-selector{border-color:var(--border)}
+.snapshot-selector{border-color:var(--border);gap:6px}
+.snapshot-icon{width:15px;height:15px;color:var(--muted-2)}
 body.is-readonly .snapshot-selector{border-color:var(--lenta);background:var(--lenta-bg)}
 body.is-readonly .snapshot-selector .period-label{color:var(--lenta)}
+body.is-readonly .snapshot-icon{color:var(--lenta)}
 .time-travel-banner{
   display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
   background:var(--lenta-bg);border:1px solid var(--lenta);border-left:5px solid var(--lenta);
